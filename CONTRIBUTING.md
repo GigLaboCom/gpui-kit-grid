@@ -182,7 +182,7 @@ Changes pile up on `main` through pull requests; a tag cuts a release.
 | | Tags | What a tag does |
 |---|---|---|
 | The library | `vX.Y.Z` | CI runs on the tag; once every job passes, its Release job checks that the tag names the crates' version and that the site's install snippets name the tag, scans the history for secrets and opens the GitHub release (the repository's latest) with the `Cargo.toml` lines to use. Not on crates.io yet: the crate depends on gpui-kit by git revision. |
-| The site | `site-vX.Y.Z` | `.github/workflows/site.yml` scans the history for secrets, publishes the image `ghcr.io/giglabocom/gpui-kit-grid-site` (`X.Y.Z`, `X.Y`, `X` from 1.0, `latest`; amd64 and arm64), deploys to Cloudflare and opens a GitHub release with the site's commits since its last tag. |
+| The site | `site-vX.Y.Z` | `.github/workflows/site.yml` scans the history for secrets, publishes the image `ghcr.io/giglabocom/gpui-kit-grid-site` (`X.Y.Z`, `X.Y`, `X` from 1.0, `latest`; amd64 and arm64) and opens a GitHub release with the site's commits since its last tag. The host behind https://gkg.giglabo.com runs that image and moves to the new version itself. |
 
 ### The library
 
@@ -220,7 +220,8 @@ script/release-site 0.2.0 --push    # tag site-v0.2.0 at origin/main and push it
 
 A pull request and `main` build the image and try it (`docker/site/smoke.sh`)
 without publishing it. Run by hand, the Site workflow publishes the image of
-any ref as `edge`; only a tag moves `latest` and the deployed site.
+any ref as `edge`; only a tag moves `latest` and makes a version the
+site's host can move to.
 
 The demos' recordings (the wiki's replay, the ships' and Helsinki's
 fallback) are not committed: the Site workflow downloads them from the

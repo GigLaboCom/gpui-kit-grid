@@ -1,6 +1,6 @@
-# Turns the site's `_headers` (Cloudflare's static-asset header rules,
-# site/public/_headers) into nginx configuration, so the image sends what
-# Cloudflare sends and the rules live in one file.
+# Turns the site's `_headers` (header rules in the format of Cloudflare's
+# static assets, site/public/_headers) into nginx configuration, so the
+# rules live in one file.
 #
 #   awk -v add=headers-add.conf -f headers.awk _headers > headers-map.conf
 #

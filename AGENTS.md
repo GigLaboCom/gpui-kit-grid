@@ -155,14 +155,14 @@ bun test --cwd site
 
 # The site as a container image (nginx, docker/site/), from the site/dist
 # CI assembles (the pages, the demos under /demo/, rustdoc under /api/): the
-# context, the image, then a read-only run against Cloudflare's behavior
+# context, the image, then a read-only run against the site's behavior
 docker/site/stage.sh target/site-image
 docker build -t gpui-kit-grid-site target/site-image
 docker/site/smoke.sh gpui-kit-grid-site
 
 # A release of the site (tags site-vX.Y.Z; vX.Y.Z is the crate's): what
-# reached the site since the last one, then the tag that publishes the image,
-# deploys to Cloudflare and opens the GitHub release
+# reached the site since the last one, then the tag that publishes the image
+# (which the site's host moves to) and opens the GitHub release
 script/release-site
 script/release-site 0.2.0 --push
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Starts the site image read-only and checks that it serves the site the way
-# Cloudflare does: pages, the trailing-slash redirect, the 404 page, the
+# it must: pages, the trailing-slash redirect, the 404 page, the
 # embedding headers and cache rules of _headers, wasm and compression, and an
 # unprivileged nginx. Paths to try come from the dist the image was built from.
 #
