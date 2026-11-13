@@ -7,8 +7,9 @@
 #   `wasm32-unknown-unknown`, and the web examples (`crates/grid-web`, a
 #   workspace of their own) are linted;
 # - gpui-kit-only jobs (recipes, gpui-shell, component-shell, website) are dropped;
-# - lint and docs run on Linux, and macOS runs the tests only: macOS runners
-#   are few, and the heavy, platform-neutral jobs need none.
+# - lint, docs, the feature variants of the tests and the doc tests run on
+#   Linux; macOS and Windows run the tests once: macOS runners are few, and
+#   what does not depend on the platform needs none.
 name: CI
 on:
   pull_request:
@@ -146,12 +147,15 @@ jobs:
     name: Test
     strategy:
       fail-fast: false
+      # Each platform runs the tests once, for what differs between them;
+      # the feature variants and the doc tests do not, and run on Linux only.
       matrix:
         include:
           - target: aarch64-apple-darwin
             run_on: macos-latest
           - target: x86_64-linux-gnu
             run_on: ubuntu-latest
+            variants: true
           - target: x86_64-windows-msvc
             run_on: windows-latest
     runs-on: ${{ matrix.run_on }}
@@ -174,11 +178,13 @@ jobs:
       - name: Test
         run: cargo test --workspace --features gpui-kit-grid/test-support --locked
       - name: Test with decimal
+        if: ${{ matrix.variants }}
         run: cargo test --workspace --features gpui-kit-grid/test-support,gpui-kit-grid/decimal --locked
       - name: Test with derive
+        if: ${{ matrix.variants }}
         run: cargo test --workspace --features gpui-kit-grid/test-support,gpui-kit-grid/derive --locked
       - name: Doc tests
-        if: ${{ matrix.run_on == 'macos-latest' }}
+        if: ${{ matrix.variants }}
         run: cargo test --workspace --features gpui-kit-grid/test-support --locked --doc
 
   examples:
