@@ -113,7 +113,14 @@ remap "$HOME" "~"
 remap "${CARGO_HOME:-$HOME/.cargo}" cargo
 remap "$CRATE/../.." gpui-kit-grid
 remap "$CRATE/../../../gpui-kit" gpui-kit
-export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="${REMAP[*]}"
+# Cargo takes RUSTFLAGS, when set, instead of the target's own flags, not
+# beside them, and CI's toolchain action sets it (`-D warnings`): the
+# remapping then joins it, or the modules would name the runner's home.
+if [[ -n "${RUSTFLAGS:-}" ]]; then
+    export RUSTFLAGS="$RUSTFLAGS ${REMAP[*]}"
+else
+    export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="${REMAP[*]}"
+fi
 # gpui-pre 0.3.8 always enables gpui_web's `multithreaded` feature, and its
 # `wasm_thread` dependency needs a nightly feature gate even in this
 # single-threaded build (fixed upstream after 0.3.8 by zed#65289).
