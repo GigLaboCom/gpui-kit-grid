@@ -107,11 +107,11 @@ before a pull request:
 | GPUI only through a pinned gpui-kit | `bun script/check-gpui-kit-pin.ts`, and again with `crates/grid-web/Cargo.toml` | Linux |
 | Format | `cargo fmt --all --check`, and in `crates/grid-web` | Linux |
 | Unused dependencies | `cargo machete` | Linux |
-| Clippy, warnings denied, all targets | `cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support -- --deny warnings`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | macOS |
-| The library without features | `cargo check -p gpui-kit-grid` | macOS |
-| Docs, warnings denied | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --features gpui-kit-grid/decimal,gpui-kit-grid/derive` | macOS |
-| Tests (unit, property, headless UI) | `cargo test --workspace --features gpui-kit-grid/test-support`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | macOS, Linux, Windows |
-| Doc tests | `cargo test --workspace --features gpui-kit-grid/test-support --doc` | macOS |
+| Clippy, warnings denied, all targets | `cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support -- --deny warnings`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | Linux |
+| The library without features | `cargo check -p gpui-kit-grid` | Linux |
+| Docs, warnings denied | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --features gpui-kit-grid/decimal,gpui-kit-grid/derive` | Linux |
+| Tests (unit, property, headless UI) | `cargo test --workspace --features gpui-kit-grid/test-support`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | macOS, Linux, Windows (the `decimal` and `derive` runs on Linux) |
+| Doc tests | `cargo test --workspace --features gpui-kit-grid/test-support --doc` | Linux |
 | The library for the browser | `RUSTC_BOOTSTRAP=1 cargo check -p gpui-kit-grid --lib --target wasm32-unknown-unknown --features decimal,derive` | Linux |
 | The web examples | `RUSTC_BOOTSTRAP=1 cargo clippy --workspace --target wasm32-unknown-unknown -- --deny warnings` in `crates/grid-web` | Linux |
 | Examples, release build | `cargo build --release -p gpui-kit-grid --examples` | Linux |
