@@ -13,8 +13,9 @@ __pycache__/
 # A contributor's own cargo settings, such as a local gpui-kit `[patch]`
 # (CONTRIBUTING.md, "A local gpui-kit checkout")
 /.cargo/config.local.toml
-# The maintainers' design notes are local only, never committed.
-/docs/
+# The maintainers' design notes: a link to custom-docs/design (the private
+# submodule), committed there only.
+/docs
 # Claude Code bookkeeping
 .claude/.cc-writes/
 .claude/settings.local.json

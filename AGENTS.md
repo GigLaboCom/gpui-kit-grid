@@ -28,7 +28,8 @@ These guides are requirements, not optional inspiration. Review the finished
 work against both guides before considering it complete.
 
 The maintainers keep the grid's design notes and decision log outside the
-repository (an untracked `docs/` folder in their checkouts). No rule here
+repository, in the private `custom-docs` submodule (`design/`, linked as an
+untracked `docs/` in their checkouts). No rule here
 depends on them: the rules below, the rustdoc and the code comments carry
 their own reasons. Where a checkout has the notes, a change to a recorded
 decision updates them too.
@@ -368,9 +369,11 @@ once the project decides to ship it. Keys describe intent.
   pages and in the README comes only from `// #region name` blocks of
   compiled files (the examples, `examples/cookbook.rs` for recipes), and
   `bun test --cwd site` checks it.
-- The maintainers' design notes (`docs/`) are kept **locally only**: the
-  folder is in `.gitignore` and is never committed or pushed; never
-  `git add -f` it. The repository stands on its own without them: no README,
+- The maintainers' design notes live in the private submodule, in
+  `custom-docs/design/`; a checkout links them as `docs/`
+  (`script/install-hooks` makes the link), which `.gitignore` keeps out of
+  this repository: never `git add -f` it, commit them in the submodule. The
+  repository stands on its own without them: no README,
   ROADMAP, site page, rule, rustdoc or code comment links into them or cites
   their section numbers or decision ids. A comment states its reason in place.
 - Code comments, rustdoc, commit messages, PR and issue text are in English

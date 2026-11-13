@@ -21,6 +21,11 @@ echo "Git hooks: .githooks/ (pre-commit, commit-msg, pre-push)"
 if git -C "$root/custom-docs" rev-parse --show-superproject-working-tree 2>/dev/null | grep -q .; then
   git -C "$root/custom-docs" config core.hooksPath ../.githooks
   echo "Git hooks: custom-docs/ uses ../.githooks"
+  # The design notes, at the path the rules name.
+  if [[ -d "$root/custom-docs/design" && ! -e "$root/docs" ]]; then
+    ln -s custom-docs/design "$root/docs"
+    echo "Linked docs/ to custom-docs/design"
+  fi
 fi
 
 list="$common/info/privacy-patterns"

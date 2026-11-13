@@ -3,7 +3,8 @@
 # Pre-commit: no secrets and no private data in what is about to be
 # committed. Also installed in the custom-docs submodule (script/install-hooks).
 #
-#   1. Files that stay local never get staged: the design notes (docs/),
+#   1. Files that stay local never get staged: the design notes (docs/,
+#      or the link to them),
 #      the agents' working documents (custom-docs/: they belong to the
 #      submodule's own repository, never to this one), personal Claude Code
 #      files and .env files.
@@ -33,7 +34,7 @@ staged="$(git diff --cached --name-only --diff-filter=ACMR)"
 
 # 1. Local-only files. A submodule's gitlink (`custom-docs`, no slash) is
 # allowed; the files under it are not.
-blocked='^(docs/|custom-docs/|CLAUDE\.local\.md$|\.claude/settings(\.local)?\.json$|(.*/)?\.env(\..*)?$)'
+blocked='^(docs/|docs$|custom-docs/|CLAUDE\.local\.md$|\.claude/settings(\.local)?\.json$|(.*/)?\.env(\..*)?$)'
 if blocked_files="$(printf '%s\n' "$staged" | grep -E "$blocked")"; then
   say "files that stay local are staged:"
   printf '  %s\n' $blocked_files >&2

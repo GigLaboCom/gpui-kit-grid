@@ -26,7 +26,8 @@ local:
 
 - terminal text;
 - `custom-docs/` for working documents;
-- `docs/` for the design documents (local only, gitignored, never committed);
+- `docs/` for the design documents (a link to `custom-docs/design/`, the private
+  submodule; committed there, never in this repository);
 - the session scratchpad for throwaway files.
 
 Subagents follow the same rule.
