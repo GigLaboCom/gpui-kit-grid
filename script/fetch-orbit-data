@@ -1,0 +1,75 @@
+#!/usr/bin/env -S python3 -I
+"""Downloads the orbital elements of the `orbit` example: CelesTrak's
+"active satellites" group as OMM JSON, about 17,000 objects and 7 MB, into
+`crates/grid/examples/data/celestrak-active.json` (gitignored: the data is
+not committed).
+
+    python3 -I script/fetch-orbit-data
+
+CelesTrak updates the data every two hours and asks clients to download it
+once per update: a repeated request within that time is refused (HTTP 403),
+and an address with too many errors is blocked. So this script
+
+- does nothing while the file is younger than two hours;
+- makes exactly one request otherwise, and accepts only HTTP 200 with a
+  JSON array of elements; anything else (403, 404, a timeout, a body that
+  is not elements) stops it with the reason, leaving the old file alone;
+- never retries. Run it again after two hours, not in a loop.
+
+OMM JSON rather than TLE: TLE cannot hold catalog numbers above 99999.
+The data is CelesTrak's (https://celestrak.org), derived from the US Space
+Force's public catalog.
+"""
+
+import json
+import pathlib
+import sys
+import time
+import urllib.error
+import urllib.request
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+DEST = ROOT / "crates" / "grid" / "examples" / "data" / "celestrak-active.json"
+URL = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=json"
+# CelesTrak's update interval: no new data before it.
+MIN_AGE = 2 * 60 * 60
+TIMEOUT = 120
+
+
+def main():
+    if DEST.is_file():
+        age = time.time() - DEST.stat().st_mtime
+        if age < MIN_AGE:
+            minutes = int((MIN_AGE - age) // 60) + 1
+            print(f"up to date  {DEST} ({age / 3600:.1f} h old; new data in {minutes} min at the earliest)")
+            return
+    request = urllib.request.Request(URL, headers={"User-Agent": "gpui-kit-grid orbit example"})
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+            status = response.status
+            data = response.read()
+    except urllib.error.HTTPError as error:
+        reason = {
+            403: "refused: the data was already downloaded since its last update; try again in two hours",
+            404: "not found: the group or the address changed",
+        }.get(error.code, error.reason)
+        sys.exit(f"FAILED  {URL}: HTTP {error.code}, {reason}")
+    except OSError as error:
+        sys.exit(f"FAILED  {URL}: {error}")
+    if status != 200:
+        sys.exit(f"FAILED  {URL}: HTTP {status}")
+    try:
+        elements = json.loads(data)
+    except ValueError as error:
+        sys.exit(f"FAILED  {URL}: not JSON ({error}); the old file is kept")
+    if not isinstance(elements, list) or not elements or "NORAD_CAT_ID" not in elements[0]:
+        sys.exit(f"FAILED  {URL}: not a list of orbital elements; the old file is kept")
+    DEST.parent.mkdir(parents=True, exist_ok=True)
+    partial = DEST.with_name(DEST.name + ".part")
+    partial.write_bytes(data)
+    partial.replace(DEST)
+    print(f"fetched  {DEST} ({len(elements)} objects, {len(data)} bytes)")
+
+
+if __name__ == "__main__":
+    main()

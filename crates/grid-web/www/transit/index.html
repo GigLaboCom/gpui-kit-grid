@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Munich by the timetable, or Helsinki live: every train, tram and bus that MVV's published timetable says is under way, with a station's scheduled departures, or every vehicle HSL's live feed reports, with a map."
+    />
+    <title>Transit · gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../shell.css" />
+    <style>
+      /* The Paper theme's. */
+      :root {
+        color-scheme: light;
+        --background: #f2efe8;
+        --foreground: #1c2128;
+        --muted: #6b665c;
+        --nav: #eae5da;
+        --nav-border: #d9d3c5;
+        --accent: #8e3b5e;
+      }
+
+      /* The data's credit, always in view under the canvas. */
+      body > canvas {
+        height: calc(100% - 28px - 22px) !important;
+      }
+
+      #credit {
+        position: fixed;
+        inset: auto 0 0 0;
+        height: 22px;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        background: var(--nav);
+        border-top: 1px solid var(--nav-border);
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #credit span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #credit a {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="apps" aria-label="Examples"></nav>
+    <p id="status">Loading…</p>
+    <pre id="bench"></pre>
+    <footer id="credit">
+      <span id="credit-munich">
+        Timetable data © Münchner Verkehrs- und Tarifverbund GmbH (MVV),
+        <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, from the
+        <a href="https://opendata.muenchen.de/dataset/soll-fahrplandaten-mvv-gesamtnetz-gtfs"
+          >Munich open data portal</a
+        >, compiled for this page. Scheduled, not real-time.
+      </span>
+      <span id="credit-helsinki" hidden>
+        Vehicle positions and network © <a href="https://www.hsl.fi/en/hsl/open-data">HSL</a>
+        <span id="credit-year"></span>,
+        <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>: high-frequency
+        positioning, live from HSL to your browser; the network compiled for this page.
+      </span>
+    </footer>
+    <script type="module">
+      // The page reads its choice from its query and fetches that choice's
+      // data first (`setup.js`, which `<live-grid>` shares): Munich by the
+      // timetable (the default; `?regional`, `?time=`), or Helsinki live
+      // (`?city=helsinki`, `&buses`, `?source=replay`, `?speed=`). The
+      // bench's rates are time warps (default 1,60).
+      import { start } from '../shell.js';
+      import { setup } from './setup.js';
+
+      const params = new URLSearchParams(location.search);
+      const transit = setup(params);
+      const helsinki = transit.city === 'helsinki';
+      if (helsinki) {
+        document.getElementById('credit-munich').hidden = true;
+        document.getElementById('credit-helsinki').hidden = false;
+        document.getElementById('credit-year').textContent = new Date().getFullYear();
+      }
+
+      start({
+        app: 'transit',
+        beforeRun: transit.beforeRun,
+        loading: transit.loading,
+        rates: helsinki ? '1' : '1,60',
+        setRate: (wasm, warp) => wasm.set_warp(warp),
+        restore: (wasm) => wasm.set_warp(1),
+        // The sweeps (`updates`): the vehicles under way, the source's and
+        // the store's share of a sweep, the rows written a second, and a
+        // live feed's messages.
+        phase: (wasm, before, after) => ({
+          transit: {
+            city: after.city,
+            sweeps: after.updates - before.updates,
+            underWay: after.under_way,
+            byMode: after.by_mode,
+            tripsToday: after.trips_today,
+            computeMs: after.compute_ms,
+            writeMs: after.write_ms,
+            loadMs: after.load_ms,
+            rowsPerSecond: after.rate,
+            shown: after.shown,
+            started: after.started,
+            departures: after.departures,
+            finished: after.finished,
+            feed: after.feed,
+            messagesPerSecond: after.messages_per_s,
+          },
+        }),
+      });
+    </script>
+  </body>
+</html>

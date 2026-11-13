@@ -1,0 +1,34 @@
+: A synthetic stream for the tests, in the shape of Wikimedia's recentchange
+: events: made-up wikis, pages and people. Not a recording.
+retry: 3000
+
+event: message
+id: [{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1794052800000}]
+data: {"$schema":"/mediawiki/recentchange/1.0.0","meta":{"domain":"canary","dt":"2026-11-07T12:00:00Z","stream":"mediawiki.recentchange"},"type":"edit","namespace":0,"title":"Canary","title_url":"https://canary/wiki/Canary","server_name":"canary","user":"Canary","length":{"old":1,"new":2}}
+
+event: message
+id: [{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1794052801000}]
+data: {"meta":{"domain":"xx.wikipedia.org","dt":"2026-11-07T12:00:01Z"},"type":"edit","namespace":0,"title":"Synthetic page","title_url":"https://xx.wikipedia.org/wiki/Synthetic_page","comment":"Example comment","server_name":"xx.wikipedia.org","user":"Example Person","bot":false,"length":{"old":100,"new":150}}
+
+event: message
+id: [{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1794052802000}]
+data: {"meta":{"domain":"www.wikidata.org","dt":"2026-11-07T12:00:02Z"},
+data:  "type":"new","namespace":0,"title":"Q1","title_url":"https://www.wikidata.org/wiki/Q1",
+data:  "server_name":"www.wikidata.org","user":"Example Bot","bot":true,"length":{"new":300}}
+
+event: message
+id: [{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1794052803000}]
+data: {"meta":{"domain":"xx.wikipedia.org","dt":"2026-11-07T12:00:03Z"},"type":"edit","namespace":2,"title":"User:Example Person","title_url":"https://xx.wikipedia.org/wiki/User:Example_Person","server_name":"xx.wikipedia.org","user":"Example Person","length":{"old":40,"new":10}}
+
+: keep-alive
+
+event: message
+id: [{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1794052804000}]
+data: {"meta":{"domain":"xx.wikipedia.org","dt":"2026-11-07T12:00:04Z"},"type":"log","namespace":-1,"title":"Special:Log/newusers","server_name":"xx.wikipedia.org","user":"Example Person"}
+
+event: message
+id: [{"topic":"eqiad.mediawiki.recentchange","partition":0,"timestamp":1794052805000}]
+data: {"meta":{"domain":"yy.wiktionary.org","dt":"2026-11-07T12:00:05Z"},"type":"categorize","namespace":14,"title":"Category:Examples","server_name":"yy.wiktionary.org","user":"Example Person"}
+
+event: message
+data: {"meta":

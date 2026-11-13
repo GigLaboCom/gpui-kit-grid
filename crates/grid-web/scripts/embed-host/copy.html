@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Embed check: frames that may not copy</title>
+    <link rel="icon" href="data:," />
+    <style>
+      body { margin: 16px; font: 14px system-ui, sans-serif; }
+      iframe {
+        display: block;
+        width: 900px;
+        height: 380px;
+        margin-bottom: 12px;
+        border: 1px solid #888;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // Two cross-site frames without `allow="clipboard-write"`: the quotes
+      // page with `?embed` from `cdn`, and the inline element on a page of
+      // `cross`, another site than this page's.
+      const params = new URLSearchParams(location.search);
+      const cdn = params.get('cdn');
+      const snippet = new URLSearchParams({ cdn, query: 'seed=7&rate=20' });
+      for (const [id, src] of [
+        ['page', new URL('quotes/?embed&seed=7&rate=20', cdn).href],
+        ['snippet', new URL(`snippet.html?${snippet}`, params.get('cross')).href],
+      ]) {
+        const frame = document.createElement('iframe');
+        frame.id = id;
+        frame.src = src;
+        document.body.append(frame);
+      }
+    </script>
+  </body>
+</html>

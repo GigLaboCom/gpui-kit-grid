@@ -1,0 +1,23 @@
+---
+title: Examples
+description: Every example in the repository, from a minimal quick start to full live applications, eight of them running in your browser.
+tableOfContents: false
+---
+
+import ExampleGallery from '../../components/ExampleGallery.astro';
+
+The repository's examples range from a minimal quick start to full
+applications built on the grid, and include the headless benchmark. Each
+one runs with `cargo run` from a checkout of the repository; the
+[Getting started](../start/) page lists what a checkout needs. The trading
+examples and most of the others load their fonts first, with
+`python3 -I script/fetch-example-fonts`; orbit and transit fetch their
+data once with `script/fetch-orbit-data` and `script/fetch-transit-data`.
+
+A demo in the browser downloads about 7 MB of WebAssembly, only when you
+ask for it, and runs one at a time on this page. **Open full page** shows
+the same example on a page of its own, with the switcher to the others.
+Prices in the market examples and everything in ops are simulated; the
+[licences](../licenses/) page says where the other data comes from.
+
+<ExampleGallery />

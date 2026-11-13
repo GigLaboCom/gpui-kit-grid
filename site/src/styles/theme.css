@@ -1,0 +1,74 @@
+/*
+ * The site's theme over Starlight's tokens: cool greys, a teal accent and
+ * IBM Plex. Every text/background pair Starlight draws with these tokens
+ * (body and secondary text, links in content and in the navigation, the
+ * primary button, the current sidebar item, the banner) meets WCAG 2 AA,
+ * 4.5:1, in both themes; the lowest is light links on inline code, 4.9:1.
+ * Change a value only with that check redone.
+ *
+ * Unlayered, so it wins over Starlight's layered defaults.
+ */
+
+:root,
+::backdrop {
+	--sl-font: 'IBM Plex Sans';
+	--sl-font-mono: 'IBM Plex Mono';
+
+	/* Dark theme */
+	--sl-color-white: hsl(0, 0%, 100%);
+	--sl-color-gray-1: hsl(210, 18%, 94%);
+	--sl-color-gray-2: hsl(210, 8%, 78%);
+	--sl-color-gray-3: hsl(210, 6%, 62%);
+	--sl-color-gray-4: hsl(210, 7%, 38%);
+	--sl-color-gray-5: hsl(210, 10%, 23%);
+	--sl-color-gray-6: hsl(210, 14%, 15%);
+	--sl-color-black: hsl(210, 14%, 9%);
+
+	--sl-color-accent-low: hsl(174, 50%, 15%);
+	--sl-color-accent: hsl(172, 72%, 40%);
+	--sl-color-accent-high: hsl(168, 72%, 72%);
+}
+
+:root[data-theme='light'],
+[data-theme='light'] ::backdrop {
+	--sl-color-white: hsl(210, 14%, 9%);
+	--sl-color-gray-1: hsl(210, 14%, 15%);
+	--sl-color-gray-2: hsl(210, 10%, 23%);
+	--sl-color-gray-3: hsl(210, 7%, 36%);
+	--sl-color-gray-4: hsl(210, 6%, 56%);
+	--sl-color-gray-5: hsl(210, 6%, 80%);
+	--sl-color-gray-6: hsl(210, 18%, 94%);
+	--sl-color-gray-7: hsl(210, 18%, 97%);
+	--sl-color-black: hsl(0, 0%, 100%);
+
+	--sl-color-accent-low: hsl(170, 55%, 90%);
+	--sl-color-accent: hsl(176, 90%, 24%);
+	--sl-color-accent-high: hsl(178, 85%, 17%);
+}
+
+/* The wordmark: the mark at text size beside the name. */
+.site-title {
+	gap: 0.5rem;
+	letter-spacing: -0.01em;
+}
+.site-title img {
+	height: 1.5rem;
+}
+
+/*
+ * Pages with a hero (the landing and 404): one column of reading width, the
+ * hero without an image over the whole of it.
+ */
+[data-has-hero] .hero,
+[data-has-hero] .sl-markdown-content {
+	max-width: 50rem;
+	margin-inline: auto;
+}
+.hero {
+	grid-template-columns: 100%;
+}
+@media (min-width: 50rem) {
+	.hero {
+		padding-block: clamp(2rem, calc(1rem + 5vmin), 4rem) 2rem;
+	}
+}

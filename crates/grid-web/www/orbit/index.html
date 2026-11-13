@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Every active satellite seen from one place, live from real orbital data: about 17,000 rows that reorder every second."
+    />
+    <title>Orbit · gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../shell.css" />
+    <style>
+      /* The Night theme's. */
+      :root {
+        --background: #0a0808;
+        --foreground: #e8deda;
+        --muted: #97857f;
+        --nav: #070505;
+        --nav-border: #231919;
+        --accent: #f0757b;
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="apps" aria-label="Examples"></nav>
+    <p id="status">Loading…</p>
+    <pre id="bench"></pre>
+    <script type="module">
+      // The page first fetches the orbital elements, from the local data or,
+      // on the public site, from CelesTrak on a click (`setup.js`, which
+      // `<live-grid>` shares). The bench's rates are time warps (default
+      // 1,60).
+      import { start } from '../shell.js';
+      import { setup } from './setup.js';
+
+      const orbit = await setup(new URLSearchParams(location.search));
+
+      start({
+        app: 'orbit',
+        beforeRun: orbit.beforeRun,
+        loading: orbit.loading,
+        rates: '1,60',
+        setRate: (wasm, warp) => wasm.set_warp(warp),
+        restore: (wasm) => wasm.set_warp(1),
+        // The sweeps (`updates`) of every object: their propagation over
+        // the sweep's steps, the rows written a second, those shown.
+        phase: (wasm, before, after) => ({
+          orbit: {
+            sweeps: after.updates - before.updates,
+            propagateMs: after.propagate_ms,
+            writeMs: after.write_ms,
+            loadMs: after.load_ms,
+            rowsPerSecond: after.rate,
+            objects: after.objects,
+            up: after.up,
+            shown: after.shown,
+            rises: after.rises,
+            sets: after.sets,
+          },
+        }),
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+# gitleaks configuration for the pre-commit hook (.githooks/pre-commit).
+# https://github.com/gitleaks/gitleaks
+
+title = "gpui-kit-grid gitleaks config"
+
+[extend]
+# The default rules.
+useDefault = true
+
+[allowlist]
+description = "Build output, lockfiles and binary assets"
+paths = [
+  '''(^|/)target/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)Cargo\.lock$''',
+  '''(^|/)bun\.lock$''',
+  '''\.(webp|png|svg|ttf|wasm)$''',
+]

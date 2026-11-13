@@ -1,0 +1,169 @@
+/* What every example's page shares (`<app>/index.html`). A page sets its
+   example's colours in its own `:root` after this sheet, so it does not
+   flash another colour before the first frame; these are the desk's Depth
+   theme's, which the quotes page and the index use. */
+:root {
+  color-scheme: dark;
+  --background: #16191e;
+  --foreground: #d1d4dc;
+  --muted: #7d8494;
+  --nav: #121418;
+  --nav-border: #252932;
+  --accent: #d1d4dc;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font: 13px/1.4 system-ui, sans-serif;
+}
+
+/* The examples, the one shown marked. */
+#apps {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 12px;
+  background: var(--nav);
+  border-bottom: 1px solid var(--nav-border);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#apps a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+#apps a:hover,
+#apps a[aria-current] {
+  color: var(--accent);
+}
+
+#apps a[aria-current] {
+  font-weight: 600;
+}
+
+/* The licences, after the examples, and the page's notice at the right. */
+#apps .licenses {
+  padding-left: 16px;
+  border-left: 1px solid var(--nav-border);
+}
+
+#apps .notice {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* GPUI's web platform appends one canvas to the body, sized 100 % in its
+   own style: below the switcher. */
+body > canvas {
+  position: fixed;
+  top: 28px;
+  left: 0;
+  display: block;
+  width: 100% !important;
+  height: calc(100% - 28px) !important;
+}
+
+/* The loader until the first rows (`shell.js`): a spinner, the step, and
+   the module's download. */
+#status {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 12px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  pointer-events: none;
+}
+
+#status .spinner {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+#status .spinner::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--nav-border);
+  border-top-color: var(--accent);
+  animation: status-spin 0.9s linear infinite;
+}
+
+#status .bar {
+  flex-basis: 100%;
+  display: block;
+  width: 180px;
+  max-width: 100%;
+  height: 2px;
+  margin: 0 auto;
+  background: var(--nav-border);
+  overflow: hidden;
+}
+
+#status .bar[hidden] {
+  display: none;
+}
+
+#status .fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 120ms linear;
+}
+
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #status .spinner::before {
+    animation: none;
+  }
+
+  #status .fill {
+    transition: none;
+  }
+}
+
+#status.error {
+  color: #ef5350;
+  max-width: 80ch;
+  white-space: pre-wrap;
+}
+
+#bench {
+  display: none;
+}

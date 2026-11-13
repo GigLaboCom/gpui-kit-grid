@@ -1,0 +1,98 @@
+---
+// Four figures from the README: its comparison with DataTable and the
+// stage 2 performance table. Update them only from a new benchmark run.
+import { withBase } from '../lib/links';
+
+const figures = [
+	{
+		value: '~1.4 ms',
+		label: 'A frame with 1500 visible cells at 2k updates/s. DataTable: ~14 ms.',
+	},
+	{
+		value: '1.34–1.43 ms',
+		label: 'Frame p99 over 100k rows at 10k updates/s, sorted by a changing column.',
+	},
+	{
+		value: '8.8–9.0%',
+		label: 'Of a core for ingest at 10k updates/s.',
+	},
+	{
+		value: '4.9–7.0 ms',
+		label: 'Rebuild p99 of a 100k-row tree with a quick filter at 10k updates/s, in the background.',
+	},
+];
+---
+
+<section class="key-numbers not-content" aria-labelledby="key-numbers">
+	<h2 id="key-numbers">In numbers</h2>
+	<ul>
+		{
+			figures.map(({ value, label }) => (
+				<li>
+					<strong>{value}</strong>
+					<span>{label}</span>
+				</li>
+			))
+		}
+	</ul>
+	<p class="note">
+		Measured with the headless <code>spike_bench</code> example, release build, on macOS; the
+		100k-row figures on an Apple M3 Pro, 100k rows × 40 columns at 2560×1440.{' '}
+		<a href={withBase('/performance/')}>Performance</a> has the method and every scenario.
+	</p>
+</section>
+
+<style>
+	.key-numbers {
+		margin: 3rem auto 0;
+		max-width: 50rem;
+	}
+	h2 {
+		font-size: var(--sl-text-h3);
+		font-weight: 600;
+		line-height: var(--sl-line-height-headings);
+		color: var(--sl-color-white);
+		margin-bottom: 1rem;
+	}
+	ul {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+		gap: 1rem;
+		padding: 0;
+		list-style: none;
+	}
+	li {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		padding: 1rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.5rem;
+		background: var(--sl-color-gray-6);
+	}
+	strong {
+		font-size: var(--sl-text-2xl);
+		font-weight: 600;
+		line-height: var(--sl-line-height-headings);
+		color: var(--sl-color-accent-high);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	span {
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+		line-height: 1.5;
+	}
+	.note {
+		margin-top: 1rem;
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-xs);
+		line-height: 1.5;
+	}
+	.note a {
+		color: var(--sl-color-text-accent);
+	}
+	:global([data-theme='light']) li {
+		background: var(--sl-color-gray-7);
+	}
+</style>

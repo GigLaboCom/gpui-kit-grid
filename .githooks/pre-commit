@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+#
+# Pre-commit: no secrets and no private data in what is about to be
+# committed. Also installed in the custom-docs submodule (script/install-hooks).
+#
+#   1. Files that stay local never get staged: the design notes (docs/),
+#      the agents' working documents (custom-docs/: they belong to the
+#      submodule's own repository, never to this one), personal Claude Code
+#      files and .env files.
+#   2. Added lines carry no absolute home paths (/Users/Shared/ names no
+#      one and is allowed), no address of the global git identity, and
+#      nothing that matches the maintainer's own list in
+#      <git common dir>/info/privacy-patterns (one extended regex per line;
+#      never tracked, so the patterns themselves stay private; a submodule
+#      also obeys the superproject's list).
+#   3. The author is not the global git address when that list matches it
+#      (a clone without the repository's own identity would otherwise
+#      commit under it).
+#   4. gitleaks scans the staged changes for secrets (.gitleaks.toml). It is
+#      required: without it the commit is refused.
+#
+# Install once: script/install-hooks. To skip it deliberately:
+# git commit --no-verify.
+
+set -euo pipefail
+
+# shellcheck source=lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+failed=0
+say() { echo "pre-commit: $*" >&2; }
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+# 1. Local-only files. A submodule's gitlink (`custom-docs`, no slash) is
+# allowed; the files under it are not.
+blocked='^(docs/|custom-docs/|CLAUDE\.local\.md$|\.claude/settings(\.local)?\.json$|(.*/)?\.env(\..*)?$)'
+if blocked_files="$(printf '%s\n' "$staged" | grep -E "$blocked")"; then
+  say "files that stay local are staged:"
+  printf '  %s\n' $blocked_files >&2
+  failed=1
+fi
+
+# 2. Private data in added lines. The home-path patterns are split so that
+# this file does not match itself.
+patterns=("/Us""ers/[^/[:space:]]+/" "/ho""me/[^/[:space:]]+/")
+labels=("an absolute macOS home path" "an absolute Linux home path")
+global_email="$(git config --global user.email || true)"
+if [[ -n "$global_email" ]]; then
+  patterns+=("$(printf '%s' "$global_email" | sed 's/[][\.*^$()+?{}|]/\\&/g')")
+  labels+=("the global git address")
+fi
+private=()
+while IFS= read -r line; do
+  private+=("$line")
+  patterns+=("$line")
+  labels+=("private pattern ${#private[@]}")
+done < <(private_patterns)
+
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  added="$(git diff --cached -U0 --no-color -- "$file" | grep -E '^\+' | grep -vE '^\+\+\+ ' |
+    sed 's#/Us''ers/Shared/##g' || true)"
+  [[ -z "$added" ]] && continue
+  for i in "${!patterns[@]}"; do
+    if printf '%s\n' "$added" | grep -qiE -- "${patterns[$i]}"; then
+      say "$file adds ${labels[$i]}"
+      failed=1
+    fi
+  done
+done <<<"$staged"
+
+# 3. The author's identity.
+author_email="$(git var GIT_AUTHOR_IDENT | sed -E 's/^.* <([^>]*)>.*$/\1/')"
+if [[ -n "$global_email" && "$author_email" == "$global_email" ]]; then
+  for p in "${private[@]+"${private[@]}"}"; do
+    if printf '%s\n' "$global_email" | grep -qiE -- "$p"; then
+      say "the author is the global git address, which privacy-patterns lists:"
+      say "set the repository's own identity (git config user.email …) and commit again"
+      failed=1
+      break
+    fi
+  done
+fi
+
+# 4. Secrets.
+if gitleaks="$(find_gitleaks)"; then
+  config=()
+  cfg="$(gitleaks_config || true)"
+  [[ -n "$cfg" ]] && config=(--config "$cfg")
+  if ! "$gitleaks" git --staged --no-banner --redact --log-level warn "${config[@]+"${config[@]}"}" "$root" >&2; then
+    say "gitleaks found a possible secret"
+    failed=1
+  fi
+else
+  gitleaks_missing | sed 's/^/pre-commit: /' >&2
+  failed=1
+fi
+
+if [[ $failed -ne 0 ]]; then
+  say "commit refused"
+  exit 1
+fi

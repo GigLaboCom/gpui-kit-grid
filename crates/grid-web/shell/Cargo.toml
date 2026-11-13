@@ -1,0 +1,34 @@
+[package]
+name = "gpui-kit-grid-web-shell"
+description = "What every web example's page shares: GPUI's web platform, the window, the fonts' intake, the page's hooks and the quotes feed's client."
+version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+# The feed's socket events (`src/feed.rs`).
+async-channel.workspace = true
+# The feed's reconnect jitter.
+fastrand.workspace = true
+gpui-kit.workspace = true
+gpui-kit-grid.workspace = true
+# The gateway's protocol and the client's state machine (`?feed=`).
+gpui-kit-grid-feed.workspace = true
+# `ArrayBuffer` messages of the feed's socket, its clock, and page numbers
+# read as the page reads them.
+js-sys.workspace = true
+log.workspace = true
+# The hooks' JSON and the theme files the fonts are read from.
+serde_json.workspace = true
+wasm-bindgen.workspace = true
+web-sys.workspace = true
+web-time.workspace = true
+
+[lints]
+workspace = true

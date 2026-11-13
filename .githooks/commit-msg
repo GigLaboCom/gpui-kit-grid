@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# Commit message: no AI or agent attribution (AGENTS.md, "No Agent
+# Attribution"), and nothing from the maintainer's private list in
+# <git common dir>/info/privacy-patterns (in the custom-docs submodule, the
+# superproject's list as well).
+#
+# Install once: script/install-hooks.
+
+set -euo pipefail
+
+# shellcheck source=lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+message="$1"
+failed=0
+say() { echo "commit-msg: $*" >&2; }
+
+# Comment lines are not part of the message.
+text="$(grep -v '^#' "$message" || true)"
+
+if printf '%s\n' "$text" |
+  grep -qiE '^co-authored-by:.*(claude|anthropic|openai|chatgpt|gpt-|copilot|gemini|codex|cursor|devin|agent)'; then
+  say "the message credits a model or an agent (Co-Authored-By)"
+  failed=1
+fi
+if printf '%s\n' "$text" |
+  grep -qiE 'generated (with|by) \[?(claude|chatgpt|gpt|copilot|codex|gemini|cursor|an? (ai|agent|llm))|🤖'; then
+  say "the message has a \"Generated with\" line"
+  failed=1
+fi
+
+n=0
+while IFS= read -r line; do
+  n=$((n + 1))
+  if printf '%s\n' "$text" | grep -qiE -- "$line"; then
+    say "the message matches private pattern $n"
+    failed=1
+  fi
+done < <(private_patterns)
+
+if [[ $failed -ne 0 ]]; then
+  say "commit refused"
+  exit 1
+fi

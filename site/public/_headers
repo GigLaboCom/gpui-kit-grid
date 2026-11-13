@@ -1,0 +1,26 @@
+# Response headers by path, for Cloudflare's static assets (copied to the
+# root of the built site). Every rule that matches a request adds its
+# headers, and a header set twice is joined with a comma, so the cache
+# rules below sit on paths that never overlap.
+
+# Astro's assets are named by their content.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Other sites load the embed element, and through it the examples' modules,
+# fonts and data, from their own origin.
+/embed/*
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
+
+/demo/*
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
+
+# The element's modules are named by their content: they never change.
+/embed/:version/modules/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The element itself moves with fixes within its version.
+/embed/:version/live-grid.js
+  Cache-Control: public, max-age=300

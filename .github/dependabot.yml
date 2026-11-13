@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    # GPUI moves only through gpui-kit, so gpui-kit is the one dependency to watch.
+    allow:
+      - dependency-name: gpui-kit

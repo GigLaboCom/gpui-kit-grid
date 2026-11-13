@@ -1,0 +1,5 @@
+[toolchain]
+# gpui-pre 0.3.8 needs Rust >= 1.95 (feature-gate errors on 1.94). Same pin as the
+# sibling gpui-kit applications; gpui-kit CI itself uses the latest stable.
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]

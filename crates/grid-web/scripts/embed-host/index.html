@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Embed check: host page</title>
+    <link rel="icon" href="data:," />
+    <style>
+      body { margin: 16px; font: 14px system-ui, sans-serif; background: #fff; color: #111; }
+      .above { height: 200px; background: linear-gradient(#eee, #ccc); }
+      .below { height: 900px; background: linear-gradient(#ccc, #eee); }
+      live-grid { width: 900px; height: 420px; }
+    </style>
+  </head>
+  <body>
+    <p><input id="field" placeholder="The host page's field" /></p>
+    <div class="above"></div>
+    <div id="grids"></div>
+    <div class="below"></div>
+    <script type="module" src="host.js"></script>
+  </body>
+</html>

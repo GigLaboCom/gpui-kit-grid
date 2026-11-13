@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "view_id": "trades",
+  "columns": [
+    {
+      "id": "instrument",
+      "width": 140.0
+    },
+    {
+      "id": "side",
+      "width": 60.0
+    },
+    {
+      "id": "price",
+      "width": 100.0
+    }
+  ],
+  "sort": [
+    {
+      "column": "price",
+      "direction": "descending"
+    }
+  ],
+  "group_by": [
+    {
+      "column": "instrument",
+      "direction": "ascending"
+    },
+    {
+      "column": "side",
+      "direction": "descending"
+    }
+  ],
+  "expansion": {
+    "depth": "all",
+    "toggled": [
+      [
+        "AAPL"
+      ],
+      [
+        "MSFT",
+        "Sell"
+      ],
+      [
+        null
+      ],
+      [
+        true
+      ],
+      [
+        12
+      ],
+      [
+        12.0
+      ],
+      [
+        {
+          "decimal": "10.20"
+        }
+      ]
+    ]
+  }
+}

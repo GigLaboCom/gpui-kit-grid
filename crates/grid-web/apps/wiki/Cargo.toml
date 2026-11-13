@@ -1,0 +1,49 @@
+[package]
+name = "gpui-kit-grid-web-wiki"
+description = "The wiki example in the browser: every Wikimedia wiki being edited, live, from the browser's EventSource."
+version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+# Never enabled: the examples' offscreen snapshots (`trading/snapshot.rs`)
+# are native only. Declared so that their `cfg` names a known feature here.
+test-support = []
+
+[dependencies]
+# The page's events for the stream's task.
+async-channel.workspace = true
+# The trading module's dependency, and the reconnect jitter.
+fastrand.workspace = true
+gpui-kit.workspace = true
+gpui-kit-grid.workspace = true
+gpui-kit-grid-web-shell.workspace = true
+# The stream's resume time as ISO 8601, the clock of the jitter's seed.
+js-sys.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+# The edits and recordings (`edit.rs`): derive, as the native example
+# has through gpui-kit-grid's own dependency. Not a workspace dependency,
+# so that adding it touches no other example.
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json.workspace = true
+wasm-bindgen.workspace = true
+# The stream (`EventSource`), the page's visibility and its interactions.
+web-sys = { workspace = true, features = ["Document", "Event", "EventSource", "EventTarget", "MessageEvent", "VisibilityState", "Window"] }
+web-time.workspace = true
+
+# Used by the code included by path, where cargo-machete does not look.
+[package.metadata.cargo-machete]
+ignored = ["fastrand", "gpui-kit-grid", "log", "parking_lot", "serde", "web-time"]
+
+[lints]
+workspace = true

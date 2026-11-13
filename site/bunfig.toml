@@ -1,0 +1,7 @@
+[install]
+# The registry is pinned in .npmrc, which bun reads before a user's own.
+# `bun add` writes exact versions, as package.json pins them.
+exact = true
+# Only versions published at least two weeks ago (in seconds), for
+# transitive dependencies too.
+minimumReleaseAge = 1209600

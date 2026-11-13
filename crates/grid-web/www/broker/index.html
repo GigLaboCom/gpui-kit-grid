@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A retail broker app: a watchlist, positions, orders and an order ticket over a simulated market, light and dark."
+    />
+    <title>Broker · gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../shell.css" />
+    <style>
+      /* The Light theme's. */
+      :root {
+        color-scheme: light;
+        --background: #f3f4f8;
+        --foreground: #151823;
+        --muted: #697084;
+        --nav: #ffffff;
+        --nav-border: #e3e5ed;
+        --accent: #151823;
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="apps" aria-label="Examples"></nav>
+    <p id="status">Loading…</p>
+    <pre id="bench"></pre>
+    <script type="module">
+      import { start } from '../shell.js';
+
+      start({ app: 'broker', notice: 'Simulated prices, not market data' });
+    </script>
+  </body>
+</html>

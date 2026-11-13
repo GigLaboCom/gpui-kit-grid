@@ -1,0 +1,29 @@
+# cargo-about's configuration for the web examples' third-party notices
+# (`scripts/licenses.mjs`, `make licenses`): the licences a crate compiled
+# into a module may carry. A crate whose licence expression none of these
+# satisfies fails the run; so does one whose licence cannot be read. GPL,
+# LGPL and AGPL are not on the list: an expression such as
+# `Apache-2.0 OR GPL-2.0-only` resolves to the licence listed here.
+#
+# MPL-2.0 is file-level copyleft: the modules use `imbl` unchanged, and the
+# notices page links each MPL crate's source, as MPL-2.0 section 3.2 asks.
+accepted = [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "bzip2-1.0.6",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+# Only what the modules compile: the browser target, without build scripts'
+# and tests' dependencies.
+targets = ["wasm32-unknown-unknown"]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true

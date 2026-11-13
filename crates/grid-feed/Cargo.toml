@@ -1,0 +1,19 @@
+[package]
+name = "gpui-kit-grid-feed"
+description = "The live quotes feed protocol of gpui-kit-grid's web example: binary messages and the client's sequence state machine."
+version = "0.0.0"
+keywords = ["gpui", "grid", "quotes", "feed"]
+categories = ["network-programming", "wasm"]
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+# Standard library only: it builds for native targets and for
+# `wasm32-unknown-unknown`, with no GPUI.
+[dependencies]
+
+[lints]
+workspace = true

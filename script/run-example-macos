@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Build a gpui-kit-grid example as a signed macOS app bundle and run it, for
+# VoiceOver and accessibility-tree checks (gpui-kit
+# docs/ACCESSIBILITY-UI-TESTING.md). Written after gpui-kit
+# `script/run-story-macos`.
+#
+#   script/run-example-macos <example> [<argument>...]
+#   script/run-example-macos --help
+#
+#   script/run-example-macos blotter
+#   ROWS=100000 RATE=10000 script/run-example-macos blotter
+#
+# <example>     an example of the `gpui-kit-grid` package, e.g. `blotter` or
+#               `quickstart` (`crates/grid/examples/<example>.rs` or
+#               `crates/grid/examples/<example>/main.rs`).
+# <argument>    passed to the example unchanged.
+#
+# The example is built in release mode with `cargo build --release --offline`
+# (run `cargo fetch` once on a fresh checkout), from the repository root, so
+# `rust-toolchain.toml` applies wherever the script is started from. The
+# bundle is `$CARGO_TARGET_DIR/release/bundle/<example>.app`, with bundle id
+# `local.gpui-kit-grid.<example>` (`_` becomes `-`) and an ad-hoc signature.
+#
+# Environment:
+#
+# - CARGO_TARGET_DIR: cargo's target directory; set to `<repo>/target` only
+#   when the caller has not set it.
+# - Everything else reaches the example unchanged, from the caller's working
+#   directory, as with `cargo run`: `ROWS`, `RATE`, `CHURN`, `RELOAD_MS`,
+#   `BLOTTER_SECONDS`, `BLOTTER_LAYOUT` (a relative path is relative to the
+#   caller's directory), `BLOTTER_COPY`, `BLOTTER_REORDER`, `MTL_HUD_ENABLED`.
+#
+# The binary runs directly, not through LaunchServices (`open`): GPUI's
+# deferred window creation conflicts with the bundle launch lifecycle and
+# spins the run loop at 100% CPU (see gpui-kit `script/run-story-macos`).
+
+set -euo pipefail
+
+usage() {
+  sed -n '2,/^$/{/^#/s/^# \{0,1\}//p;}' "$0"
+}
+
+# A usage error.
+fail() {
+  echo "run-example-macos: $1" >&2
+  echo "Run 'script/run-example-macos --help' for usage." >&2
+  exit 2
+}
+
+die() {
+  echo "run-example-macos: $1" >&2
+  exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  fail "missing <example>"
+fi
+case "$1" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -*)
+    fail "unknown option: $1"
+    ;;
+esac
+
+EXAMPLE=$1
+shift
+if [[ ! $EXAMPLE =~ ^[A-Za-z0-9_-]+$ ]]; then
+  fail "not an example name: $EXAMPLE"
+fi
+if [[ $(uname -s) != Darwin ]]; then
+  die "macOS only (an app bundle and codesign)"
+fi
+command -v codesign >/dev/null || die "codesign not found (install the Xcode command line tools)"
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+EXAMPLES=$ROOT/crates/grid/examples
+if [[ ! -f $EXAMPLES/$EXAMPLE.rs && ! -f $EXAMPLES/$EXAMPLE/main.rs ]]; then
+  available=$(cd "$EXAMPLES" && ls | sed 's/\.rs$//' | tr '\n' ' ')
+  fail "no example '$EXAMPLE' in crates/grid/examples (have: ${available% })"
+fi
+
+# Absolute, because the build runs from the repository root and the binary is
+# looked up afterwards from the caller's directory.
+CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$ROOT/target}
+if [[ $CARGO_TARGET_DIR != /* ]]; then
+  CARGO_TARGET_DIR=$PWD/$CARGO_TARGET_DIR
+fi
+export CARGO_TARGET_DIR
+
+(cd "$ROOT" && cargo build --release --offline -p gpui-kit-grid --example "$EXAMPLE")
+
+BIN=$CARGO_TARGET_DIR/release/examples/$EXAMPLE
+[[ -x $BIN ]] || die "cargo built no $BIN"
+APP=$CARGO_TARGET_DIR/release/bundle/$EXAMPLE.app
+BUNDLE_ID=local.gpui-kit-grid.${EXAMPLE//_/-}
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS"
+cp "$BIN" "$APP/Contents/MacOS/$EXAMPLE"
+
+cat >"$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleExecutable</key><string>$EXAMPLE</string>
+  <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
+  <key>CFBundleName</key><string>gpui-kit-grid $EXAMPLE</string>
+  <key>CFBundleVersion</key><string>1.0</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>NSPrincipalClass</key><string>NSApplication</string>
+  <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
+PLIST
+
+codesign --sign - --force "$APP"
+
+echo "run-example-macos: $APP ($BUNDLE_ID)" >&2
+exec "$APP/Contents/MacOS/$EXAMPLE" "$@"
