@@ -1,6 +1,8 @@
 ---
-// Starlight's footer (pagination) and a line about the project under it.
+// Starlight's footer (pagination), a line about the project under it, and the
+// cookie banner (cookie-consent/, active only on gkg.giglabo.com).
 import Default from '@astrojs/starlight/components/Footer.astro';
+import CookieConsentLoader from './cookie-consent/CookieConsentLoader.astro';
 import { withBase } from '../lib/links';
 ---
 
@@ -13,8 +15,20 @@ import { withBase } from '../lib/links';
 	<span aria-hidden="true">·</span>{' '}
 	<a href={withBase('/privacy/')}>Privacy</a>{' '}
 	<span aria-hidden="true">·</span>{' '}
+	<button type="button" class="cookie-settings" data-cookie-settings>Cookie settings</button>{' '}
+	<span aria-hidden="true">·</span>{' '}
 	<a href={withBase('/licenses/')}>Licenses</a>
 </p>
+<CookieConsentLoader />
+
+<script>
+	// Any `[data-cookie-settings]` (here and on the Privacy page) reopens the banner.
+	document.addEventListener('click', (e) => {
+		if ((e.target as Element | null)?.closest?.('[data-cookie-settings]')) {
+			document.dispatchEvent(new Event('cookie-consent:open'));
+		}
+	});
+</script>
 
 <style>
 	.project {
@@ -25,10 +39,20 @@ import { withBase } from '../lib/links';
 		font-size: var(--sl-text-xs);
 		text-align: center;
 	}
-	.project a {
+	.project a,
+	.cookie-settings {
 		color: var(--sl-color-gray-2);
 	}
-	.project a:hover {
+	.cookie-settings {
+		font: inherit;
+		background: none;
+		border: 0;
+		padding: 0;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	.project a:hover,
+	.cookie-settings:hover {
 		color: var(--sl-color-text-accent);
 	}
 </style>

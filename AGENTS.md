@@ -153,6 +153,14 @@ bun run --cwd site build
 bun run --cwd site check
 bun test --cwd site
 
+# The site's analytics and cookie banner (site/src/lib/consent.ts,
+# site/src/components/cookie-consent/, after moa.giglabo.com): GTM in Consent
+# Mode v2, everything denied by default; EU visitors get a banner, the region
+# comes from /api-shared/ip on the site's own origin (the cluster routes it to
+# the shared service). Both run only on gkg.giglabo.com, never in a frame or
+# another copy of the image. Anything new stored in the browser needs a row in
+# the Privacy page's table (site/src/content/docs/privacy.md).
+
 # The site as a container image (nginx, docker/site/), from the site/dist
 # CI assembles (the pages, the demos under /demo/, rustdoc under /api/): the
 # context, the image, then a read-only run against the site's behavior
