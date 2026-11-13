@@ -186,6 +186,13 @@ function apps() {
 // there (`cargo tree`: the workspace's metadata unifies features across
 // targets and lists crates the module never compiles).
 function cratesPerApp(names) {
+  // `cargo metadata` reads every package of the lock file, the other
+  // platforms' too (accesskit_macos, accesskit_atspi_common), which a
+  // machine that built for the browser alone, a CI runner among them, has
+  // not downloaded. Fetch them first; the steps below stay offline, so they
+  // read exactly the lock file. Without a network the fetch fails quietly
+  // and the offline steps say what is missing.
+  run('cargo', ['fetch', '--locked']);
   const result = run('cargo', ['metadata', '--format-version', '1', '--locked', '--offline']);
   if (result.status !== 0) throw new Error(`cargo metadata failed:\n${result.stderr}`);
   const metadata = JSON.parse(result.stdout);
