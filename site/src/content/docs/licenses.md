@@ -36,6 +36,7 @@ from the repository's `Cargo.lock` by every build of the demos.
 | Ships | Source: [Fintraffic / digitraffic.fi](https://www.digitraffic.fi/en/marine-traffic/), license [CC 4.0 BY](https://creativecommons.org/licenses/by/4.0/). | A short recording of the AIS messages, with its licence note |
 | Orbit | Orbital elements from [CelesTrak](https://celestrak.org), derived from the US Space Force's public catalog. Positions are computed with SGP4 and are approximate. | Nothing: your browser downloads the elements from celestrak.org when you ask, and keeps them for two hours |
 | Quotes, Desk, Broker | Simulated: see below. | Nothing |
+| Ops | Simulated: a made-up data center, its hosts, services and alerts produced inside the page. | Nothing |
 
 The live demos connect your browser straight to their source: Wikimedia
 when you press Start, Digitraffic when the page opens, CelesTrak when you

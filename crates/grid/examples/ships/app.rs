@@ -602,7 +602,8 @@ impl Ships {
                         mark.child(
                             div()
                                 .text_color(theme.muted_foreground)
-                                .child("every vessel around Finland, live from AIS"),
+                                // The connection tag says live or replay.
+                                .child("every vessel around Finland, from AIS"),
                         )
                     }),
             )

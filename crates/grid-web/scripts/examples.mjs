@@ -200,7 +200,9 @@ try {
         await page.type('msft');
         await page.enter();
       },
-      (app) => app.current === 'MSFT',
+      // One answer: the instrument, not an error after it (Enter sends
+      // its `\r` as well, which once ran the emptied line again).
+      (app) => app.current === 'MSFT' && app.message?.startsWith('MSFT') && !app.message_error,
     );
     await page.step(
       'type THEME heat',
@@ -208,7 +210,7 @@ try {
         await page.type('THEME heat');
         await page.enter();
       },
-      (app) => app.theme === 'Heat',
+      (app) => app.theme === 'Heat' && !app.message_error,
     );
     await page.step(
       'type tf 5s',
@@ -343,6 +345,23 @@ try {
       (app) => app.search === 'apzzz' && app.shown === 0,
     );
     await page.shot('broker-search');
+    // Back to the watchlist from the search box, the key a Mac's Option
+    // types first; the box keeps its text, without a `∑` in it.
+    await page.step(
+      'Alt-W watchlist',
+      () => page.key('∑', { code: 'KeyW', keyCode: 87, modifiers: ALT, text: '∑' }),
+      (app) => app.focus === 'watchlist' && app.search === 'apzzz',
+    );
+    await page.step(
+      'Ctrl-F search again',
+      () => page.key('f', { code: 'KeyF', keyCode: 70, modifiers: CTRL }),
+      (app) => app.focus === 'search',
+    );
+    await page.step(
+      'Alt-W-plain watchlist',
+      () => page.key('w', { code: 'KeyW', keyCode: 87, modifiers: ALT }),
+      (app) => app.focus === 'watchlist',
+    );
   });
 
   if (APPS.includes('orbit')) await withPage('orbit', `time=${ORBIT_TIME}`, async (page) => {

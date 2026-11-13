@@ -143,9 +143,10 @@ jobs:
           sudo apt-get install --yes --no-install-recommends libharfbuzz-bin
       - name: Install system dependencies
         run: script/bootstrap
+      # Astro's minimum, the same file nvm and fnm read locally.
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: gpui-kit-grid/.nvmrc
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.6

@@ -97,7 +97,7 @@ fn main() {
     let settings = app::native::settings_from_env();
     // Offscreen only: never fall through to a window.
     if let Some(dir) = std::env::var_os("SHIPS_SNAPSHOT") {
-        let seconds = std::env::var("SHIPS_SECONDS")
+        let seconds: Option<u64> = std::env::var("SHIPS_SECONDS")
             .ok()
             .and_then(|seconds| seconds.parse().ok());
         #[cfg(feature = "test-support")]

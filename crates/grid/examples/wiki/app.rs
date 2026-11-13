@@ -805,7 +805,8 @@ impl Wiki {
                         mark.child(
                             div()
                                 .text_color(theme.muted_foreground)
-                                .child("the whole world editing Wikimedia, live"),
+                                // The mode tag says live or replay.
+                                .child("the whole world editing Wikimedia"),
                         )
                     }),
             )

@@ -547,7 +547,8 @@ impl Orbit {
                     .child(
                         div()
                             .text_color(theme.muted_foreground)
-                            .child("everything in orbit, live"),
+                            // The clock and its warp beside it say how live it is.
+                            .child("everything in orbit"),
                     ),
             )
             .child(

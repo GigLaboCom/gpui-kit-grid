@@ -297,6 +297,12 @@ impl Desk {
             return;
         }
         let text = input.read(cx).value();
+        // An empty line asks for nothing, as at a shell prompt. In the
+        // browser one Enter can also arrive twice (the key, then its `\r`),
+        // and the second must not answer the first command with an error.
+        if text.trim().is_empty() {
+            return;
+        }
         self.message = match command::parse(&text) {
             Ok(command) => self
                 .run(command, cx)
@@ -670,6 +676,7 @@ impl Desk {
             "timeframe": self.chart.read(cx).timeframe().label(),
             "help": self.help,
             "message": self.message.as_ref().map(|message| message.text.as_ref()),
+            "message_error": self.message.as_ref().is_some_and(|message| message.error),
             "focus": focus,
         })
     }

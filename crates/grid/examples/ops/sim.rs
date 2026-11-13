@@ -107,6 +107,9 @@ pub const HISTORY_SECONDS: usize = 120;
 /// Baseline alerts (disk, memory, clock) a second across the fleet.
 const TRICKLE_RATE: f64 = 0.7;
 
+/// Mixed into the seed for the storms' own generator.
+const STORM_SEED: u64 = 0x5_7012_4d;
+
 /// Cooling left in a hall that lost feed B.
 const COOLING_ON_ONE_FEED: f64 = 0.3;
 /// Degrees a hall heats up with no cooling at all.
@@ -625,6 +628,10 @@ struct Storm {
 /// The simulator: see the module documentation.
 pub struct Sim {
     rng: fastrand::Rng,
+    /// Picks the storm's hall, apart from `rng`: with a seed the storms
+    /// hit the same halls in the same order, whenever the key starts
+    /// them, since `rng` draws as the clock runs.
+    storm_rng: fastrand::Rng,
     /// Simulated milliseconds since the start.
     now: u64,
     /// `hh:mm:ss` of `now`, shared by the alerts that fire this second.
@@ -659,6 +666,9 @@ impl Sim {
     /// lasts before it recovers on its own.
     pub fn new(shape: FleetShape, seed: Option<u64>, storm_seconds: u64) -> Self {
         let mut rng = seed.map_or_else(fastrand::Rng::new, fastrand::Rng::with_seed);
+        let storm_rng = seed.map_or_else(fastrand::Rng::new, |seed| {
+            fastrand::Rng::with_seed(seed ^ STORM_SEED)
+        });
         let mut nodes = Vec::new();
         let regions = shape.regions.min(REGIONS.len() as u32);
         for region in 0..regions {
@@ -779,6 +789,7 @@ impl Sim {
         let node_count = nodes.len();
         let mut sim = Self {
             rng,
+            storm_rng,
             now: 0,
             now_text: clock_text(START_CLOCK_MS).into(),
             now_second: START_CLOCK_MS / 1_000,
@@ -846,7 +857,7 @@ impl Sim {
                 self.halls[storm.hall].feed_b = false;
             }
             None => {
-                let hall = self.rng.usize(..self.halls.len());
+                let hall = self.storm_rng.usize(..self.halls.len());
                 self.halls[hall].feed_b = false;
                 self.storm = Some(Storm {
                     hall,
@@ -1581,6 +1592,19 @@ mod tests {
         assert_eq!(sim.phase(), Phase::Quiet);
         assert_eq!(sim.hosts_down(), 0);
         assert!(sim.active_counts()[0] < critical);
+    }
+
+    #[test]
+    fn test_seed_fixes_the_storm_hall_whenever_it_starts() {
+        let hall_after = |seconds| {
+            let mut sim = Sim::new(FleetShape::small(), Some(7), 20);
+            step(&mut sim, seconds);
+            sim.toggle_storm();
+            sim.storm_hall().expect("a storm")
+        };
+        let first = hall_after(0);
+        assert_eq!(hall_after(3), first);
+        assert_eq!(hall_after(11), first);
     }
 }
 

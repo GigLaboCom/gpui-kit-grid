@@ -219,7 +219,7 @@ impl Who {
             Some(identity) => Self {
                 start: identity.start,
                 parent: identity.parent,
-                uid: Uid::try_from(identity.uid as usize).ok(),
+                uid: uid_of(identity.uid),
             },
             None => Self {
                 start: process.start_time(),
@@ -228,6 +228,19 @@ impl Who {
             },
         }
     }
+}
+
+/// The user id `task.rs` read, as sysinfo's. A Unix id is a number;
+/// Windows' are SIDs, which `task.rs` never reads (its `identity` is
+/// macOS's), so there is nothing to convert.
+#[cfg(unix)]
+fn uid_of(uid: u32) -> Option<Uid> {
+    Uid::try_from(uid as usize).ok()
+}
+
+#[cfg(not(unix))]
+fn uid_of(_: u32) -> Option<Uid> {
+    None
 }
 
 /// Reads the machine; owned by the sampler's thread.

@@ -141,6 +141,9 @@ Before you start to write code, please read the existing code and
 ./script/bootstrap
 ```
 
+The site (`site/`) also needs Node 22.23.4 or newer, Astro's minimum
+(`.nvmrc`, which nvm and fnm read), and Bun.
+
 For Windows, run in PowerShell:
 
 ```powershell

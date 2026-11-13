@@ -91,7 +91,7 @@ export const EXAMPLES: Example[] = [
 		name: 'transit',
 		title: 'Munich by the timetable',
 		description:
-			'Every train, tram and city bus that MVV’s published timetable says is under way, placed between its stations and updated every second, with a map and a station’s board of departures. Scheduled, not real-time.',
+			'Every train, tram and city bus that MVV’s published timetable says is under way, placed between its stations and updated every second, with a map and a station’s board of departures. A bar shows each vehicle’s progress to its next station; W runs the clock ×10 or ×60, and the timetable keeps pace. Scheduled, not real-time.',
 		command: run('transit'),
 		source: 'crates/grid/examples/transit',
 		demo: { app: 'transit', poster: 'transit' },
@@ -123,7 +123,7 @@ export const EXAMPLES: Example[] = [
 		name: 'ships',
 		title: 'Every vessel around Finland',
 		description:
-			'About 700 vessels live from Digitraffic’s open AIS data, a row each updated in place and sorted by speed, with a map drawn by the vessels themselves.',
+			'About 700 vessels live from Digitraffic’s open AIS data, a row each updated in place and sorted by speed, with a map drawn by the vessels themselves. A vessel silent for ten minutes dims, and after thirty it fades out.',
 		command: run('ships'),
 		source: 'crates/grid/examples/ships',
 		demo: {
@@ -195,6 +195,14 @@ export const EXAMPLES: Example[] = [
 			'A news monitor grid with unread stories in bold and category chips, the open story with live quotes, and a market overview grouped by sector. Stories come from neutral templates over the simulated quotes.',
 		command: run('wire'),
 		source: 'crates/grid/examples/wire',
+	},
+	{
+		name: 'perf',
+		title: 'A live process and GPU monitor',
+		description:
+			'Every process of this machine with its CPU, GPU, memory, disk and threads, sampled every second and written to the grid from a thread of its own, the machine’s totals pinned on top; a tree by parent process, a flat list, or grouped by user or app. Nothing is simulated. macOS and Linux; on Windows the GPU columns stay blank.',
+		command: run('perf'),
+		source: 'crates/grid/examples/perf',
 	},
 	{
 		name: 'spike_bench',

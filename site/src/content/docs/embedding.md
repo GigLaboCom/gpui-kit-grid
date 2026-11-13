@@ -20,7 +20,7 @@ about a 7 MB download.
 
 | Attribute | What it does |
 | --- | --- |
-| `app` | The example: `quotes` (the default), `desk`, `broker`, `orbit`, `transit`, `wiki` or `ships`. |
+| `app` | The example: `quotes` (the default), `desk`, `broker`, `ops`, `orbit`, `transit`, `wiki` or `ships`. |
 | `mode` | `inline` (the default) runs the example in your page, its canvas inside the element. `frame` shows the example's page in an iframe with `allow="clipboard-write; fullscreen"`: its keyboard shortcuts stay inside, and copying works there. |
 | `theme` | A theme remix: JSON, or packed as `v1.…` the way Play and `#theme=` links carry it. Changing the attribute recolours the running example. |
 | `query` | The example's own parameters, such as `seed=7&rate=20`. |
@@ -29,7 +29,8 @@ about a 7 MB download.
 The element is 360 px high until your CSS sizes it. Its bottom 20 px are a
 line that links the licences of what the example is built from, and for
 `quotes`, `desk` and `broker` also says "Simulated prices, not market
-data": they show real companies with made-up prices.
+data": they show real companies with made-up prices. For `ops`, a made-up
+data center, it says "Simulated data".
 
 From script:
 
@@ -136,8 +137,8 @@ recolours the example's theme, it does not replace it.
 **How far each example follows.** Every grid follows the table keys and
 the change highlights.
 
-- `quotes` and `desk` follow everywhere: all their colours are these
-  tokens.
+- `quotes`, `desk` and `ops` follow everywhere: all their colours are
+  these tokens.
 - `orbit` and `ships` follow on the grids, borders and headers; their
   panels and plots keep colours of their own.
 - `broker`, `transit` and `wiki` have light themes. Their grids, text and

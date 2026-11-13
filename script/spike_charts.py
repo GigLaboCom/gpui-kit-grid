@@ -243,33 +243,33 @@ def chart_frame_vs_datatable(run: Run) -> str | None:
     # Columns: name, draws, draws/s, p50, p95, p99, max, overhead, notes.
     rows = [
         ("gpui-kit-grid", number(s["S1"][3]), number(s["S1"][7])),
-        ("DataTable, быстрый делегат", number(s["S6b"][3]), number(s["S6b"][7])),
-        ("DataTable, типичный делегат", number(s["S6"][3]), number(s["S6"][7])),
+        ("DataTable, fast delegate", number(s["S6b"][3]), number(s["S6b"][7])),
+        ("DataTable, typical delegate", number(s["S6"][3]), number(s["S6"][7])),
     ]
     width, left, right = 760, 230, 680
     top, row_h, bar_h = 92, 40, 18
     bottom = top + row_h * len(rows)
     max_value = 16.0
     scale = (right - left) / max_value
-    body = [x_axis(left, right, top - 8, bottom, max_value, 4, "мс на кадр, p50")]
+    body = [x_axis(left, right, top - 8, bottom, max_value, 4, "ms a frame, p50")]
     for ix, (name, subtree, overhead) in enumerate(rows):
         y = top + ix * row_h + (row_h - bar_h) / 2
         w1, w2 = subtree * scale, overhead * scale
         body.append(f'<text class="label" x="{left - 12}" y="{y + bar_h / 2 + 4}" text-anchor="end">{esc(name)}</text>')
-        body.append(bar(left, y, w1, bar_h, "s1", f"{name}: компонент {fmt(subtree)} мс", False))
+        body.append(bar(left, y, w1, bar_h, "s1", f"{name}: the component {fmt(subtree)} ms", False))
         # 2px surface gap between stacked segments.
-        body.append(bar(left + w1 + 2, y, max(w2 - 2, 1), bar_h, "rest", f"{name}: GPUI вне компонента {fmt(overhead)} мс", True))
+        body.append(bar(left + w1 + 2, y, max(w2 - 2, 1), bar_h, "rest", f"{name}: GPUI outside the component {fmt(overhead)} ms", True))
         total = subtree + overhead
-        body.append(f'<text class="value" x="{left + w1 + w2 + 8}" y="{y + bar_h / 2 + 4}">{fmt(total)} мс</text>')
+        body.append(f'<text class="value" x="{left + w1 + w2 + 8}" y="{y + bar_h / 2 + 4}">{fmt(total)} ms</text>')
     ratio_fast = (rows[1][1] + rows[1][2]) / (rows[0][1] + rows[0][2])
-    body.append(legend(left, bottom + 54, [("s1", "rect", "Отрисовка компонента"), ("rest", "rect", "Работа GPUI вне компонента")]))
+    body.append(legend(left, bottom + 54, [("s1", "rect", "Painting the component"), ("rest", "rect", "GPUI outside the component")]))
     return frame(
         width,
         bottom + 74,
-        f"Кадр: gpui-kit-grid в {ratio_fast:.0f} раз быстрее DataTable",
-        "Нагрузка S1: 2k обновлений/с в видимых строках, 2560×1440 при 2×, ~1500 ячеек",
+        f"Frame: gpui-kit-grid {ratio_fast:.0f} times faster than DataTable",
+        "Load S1: 2k updates/s on visible rows, 2560×1440 at 2×, ~1500 cells",
         "".join(body),
-        "Время кадра gpui-kit-grid и DataTable",
+        "Frame time of gpui-kit-grid and DataTable",
     )
 
 
@@ -289,32 +289,32 @@ class FrameScenario:
 # Spike scenarios first in each limit group; S1h, S8, S11b, S15, S4b and S12
 # come from stage 1, the rest from stage 2.
 FRAME_SCENARIOS = [
-    FrameScenario("S1", "Обновления в видимых строках, 2k/с", 8),
-    FrameScenario("S1h", "S1 + курсор над телом и тултип", 8),
-    FrameScenario("S2", "P2: 10k/с, сортировка по меняющейся колонке", 8),
-    FrameScenario("S7", "P2 + удаления и вставки по 1k/с", 8),
-    FrameScenario("S8", "P2 + полосы и неопределённый прогресс", 8),
-    FrameScenario("S11b", "P2 + набор текста в быстром фильтре", 8),
-    FrameScenario("S3", "Быстрая прокрутка: новая страница в кадр", 12),
-    FrameScenario("S3b", "Горизонтальная прокрутка", 12),
-    FrameScenario("S15", "P2: PageDown с автоповтором 30 Гц", 12),
-    FrameScenario("S4", "Ресайз двух видимых колонок", 12),
-    FrameScenario("S4b", "Ресайз колонки правой зоны", 12),
-    FrameScenario("S12", "Перетаскивание заголовка с автопрокруткой", 12),
-    FrameScenario("S20", "S1 со стрелками направления", 8, stage=2),
-    FrameScenario("S16", "P2 по 1 колонке, Sum и Avg", 12, r"all expanded$", 2),
-    FrameScenario("S16b", "P2 по 2 колонкам, половина свёрнута", 12, stage=2),
-    FrameScenario("S23", "S16 + футеры групп и итоги", 12, stage=2),
-    FrameScenario("S21", "P2 по 1 колонке + угасание удалённых", 12, stage=2),
-    FrameScenario("S19", "Дерево 100k, быстрый фильтр", 12, "quick filter", 2),
-    FrameScenario("S19", "Дерево 100k, всё раскрыто", 12, "all expanded", 2),
-    FrameScenario("S22", "Заголовок через область группировки", 12, stage=2),
-    FrameScenario("S18", "Раскрытие группы на 50k строк", 12, "group of", 2),
-    FrameScenario("S18", "Раскрыть и свернуть всё, 1000 групп", 12, "1000 groups", 2),
+    FrameScenario("S1", "Updates on visible rows, 2k/s", 8),
+    FrameScenario("S1h", "S1 + pointer over the body and a tooltip", 8),
+    FrameScenario("S2", "P2: 10k/s, sorted by a changing column", 8),
+    FrameScenario("S7", "P2 + 1k/s removals and inserts", 8),
+    FrameScenario("S8", "P2 + bars and indeterminate progress", 8),
+    FrameScenario("S11b", "P2 + typing in the quick filter", 8),
+    FrameScenario("S3", "Fast scroll: a new page every frame", 12),
+    FrameScenario("S3b", "Horizontal scroll", 12),
+    FrameScenario("S15", "P2: PageDown auto-repeat at 30 Hz", 12),
+    FrameScenario("S4", "Resizing two visible columns", 12),
+    FrameScenario("S4b", "Resizing a right-zone column", 12),
+    FrameScenario("S12", "Dragging a header with auto-scroll", 12),
+    FrameScenario("S20", "S1 with direction arrows", 8, stage=2),
+    FrameScenario("S16", "P2 by 1 column, Sum and Avg", 12, r"all expanded$", 2),
+    FrameScenario("S16b", "P2 by 2 columns, half collapsed", 12, stage=2),
+    FrameScenario("S23", "S16 + group footers and totals", 12, stage=2),
+    FrameScenario("S21", "P2 by 1 column + fading removed rows", 12, stage=2),
+    FrameScenario("S19", "Tree 100k, quick filter", 12, "quick filter", 2),
+    FrameScenario("S19", "Tree 100k, all expanded", 12, "all expanded", 2),
+    FrameScenario("S22", "A header through the grouping area", 12, stage=2),
+    FrameScenario("S18", "Expanding a group of 50k rows", 12, "group of", 2),
+    FrameScenario("S18", "Expand and collapse all, 1000 groups", 12, "1000 groups", 2),
 ]
 
 # The label of the stage 2 rows of a chart.
-STAGE_2 = "Этап 2: группы, дерево, живые изменения"
+STAGE_2 = "Stage 2: groups, tree, live changes"
 
 
 def stage_rows(rows: list[tuple], stage_of) -> list[tuple | None]:
@@ -346,7 +346,7 @@ def chart_scenarios(run: Run) -> str | None:
     bottom = top + row_h * len(lines)
     max_value, step = nice_axis(max(row[4] for row in rows), 12.0, (2, 4, 5, 10, 20, 50))
     scale = (right - left) / max_value
-    body = [x_axis(left, right, top - 8, bottom, max_value, step, "мс на кадр")]
+    body = [x_axis(left, right, top - 8, bottom, max_value, step, "ms a frame")]
     for ix, line in enumerate(lines):
         cy = top + ix * row_h + row_h / 2
         if line is None:
@@ -355,22 +355,22 @@ def chart_scenarios(run: Run) -> str | None:
         key, name, limit, p50, p99, _ = line
         body.append(f'<text class="label" x="{left - 12}" y="{cy + 4}" text-anchor="end">{esc(name)}</text>')
         lx = left + limit * scale
-        body.append(f'<line class="limit" x1="{lx:.1f}" y1="{cy - 9}" x2="{lx:.1f}" y2="{cy + 9}"><title>Порог p99: {limit} мс</title></line>')
+        body.append(f'<line class="limit" x1="{lx:.1f}" y1="{cy - 9}" x2="{lx:.1f}" y2="{cy + 9}"><title>p99 limit: {limit} ms</title></line>')
         x50, x99 = left + p50 * scale, left + p99 * scale
         body.append(f'<line class="span" x1="{x50:.1f}" y1="{cy}" x2="{x99:.1f}" y2="{cy}"/>')
-        body.append(f'<circle class="p50" cx="{x50:.1f}" cy="{cy}" r="5"><title>{key} p50: {fmt(p50)} мс</title></circle>')
-        body.append(f'<circle class="p99" cx="{x99:.1f}" cy="{cy}" r="5"><title>{key} p99: {fmt(p99)} мс</title></circle>')
+        body.append(f'<circle class="p50" cx="{x50:.1f}" cy="{cy}" r="5"><title>{key} p50: {fmt(p50)} ms</title></circle>')
+        body.append(f'<circle class="p99" cx="{x99:.1f}" cy="{cy}" r="5"><title>{key} p99: {fmt(p99)} ms</title></circle>')
         body.append(f'<text class="value" x="{x99 + 10:.1f}" y="{cy + 4}">{fmt(p99)}</text>')
     body.append(legend(left, bottom + 54, [("p50", "dot", "p50"), ("p99", "dot", "p99")]))
     body.append(f'<line class="limit" x1="{left + 120}" y1="{bottom + 44}" x2="{left + 120}" y2="{bottom + 56}"/>')
-    body.append(f'<text class="label" x="{left + 128}" y="{bottom + 54}">порог p99 (8 или 12 мс)</text>')
+    body.append(f'<text class="label" x="{left + 128}" y="{bottom + 54}">p99 limit of the scenario (8 or 12 ms)</text>')
     return frame(
         width,
         bottom + 74,
-        "Кадр gpui-kit-grid по сценариям: p50 и p99",
-        "Каждая настоящая отрисовка компонента, 300 кадров; 100k строк × 40 колонок",
+        "gpui-kit-grid frames by scenario: p50 and p99",
+        "Every real paint of the component, 300 frames; 100k rows × 40 columns",
         "".join(body),
-        "p50 и p99 времени кадра по сценариям",
+        "Frame time p50 and p99 by scenario",
     )
 
 
@@ -386,17 +386,17 @@ class BackgroundJob:
 
 
 BACKGROUND_JOBS = [
-    BackgroundJob("Порядок вставки", "Rebuild 100000 rows, insertion", None),
-    BackgroundJob("Сортировка по числу", "Rebuild 100000 rows, float", 30),
-    BackgroundJob("Сортировка по тексту", "Rebuild 100000 rows, text column", 30),
-    BackgroundJob("Текст + число + фильтр", "Rebuild 100000 rows, text +", 30),
-    BackgroundJob("Сжатие после 1k удалений", "after 1k removals", None),
-    BackgroundJob("S16: группы по 1 колонке, Sum и Avg", "S16 Rebuild 100000", 30, 2),
-    BackgroundJob("S16b: 2 колонки, 600 групп", "S16b Rebuild", 30, 2),
-    BackgroundJob("S21: S16 и 1000 угасающих строк", "S21 Rebuild", 30, 2),
-    BackgroundJob("S19: дерево 100k, быстрый фильтр", "S19 tree", 40, 2),
-    BackgroundJob("S17: задача агрегатов", "S17 aggregate", 10, 2),
-    BackgroundJob("S18: раскрыть группу на 50k", "S18 expand job: expand and collapse", 10, 2),
+    BackgroundJob("Insertion order", "Rebuild 100000 rows, insertion", None),
+    BackgroundJob("Sorted by a number", "Rebuild 100000 rows, float", 30),
+    BackgroundJob("Sorted by text", "Rebuild 100000 rows, text column", 30),
+    BackgroundJob("Text + number + filter", "Rebuild 100000 rows, text +", 30),
+    BackgroundJob("Compaction after 1k removals", "after 1k removals", None),
+    BackgroundJob("S16: groups by 1 column, Sum and Avg", "S16 Rebuild 100000", 30, 2),
+    BackgroundJob("S16b: 2 columns, 600 groups", "S16b Rebuild", 30, 2),
+    BackgroundJob("S21: S16 and 1000 fading rows", "S21 Rebuild", 30, 2),
+    BackgroundJob("S19: tree 100k, quick filter", "S19 tree", 40, 2),
+    BackgroundJob("S17: the aggregate job", "S17 aggregate", 10, 2),
+    BackgroundJob("S18: expanding a group of 50k", "S18 expand job: expand and collapse", 10, 2),
 ]
 
 
@@ -425,7 +425,7 @@ def chart_background(run: Run) -> str | None:
     largest = max(max(value, worst or 0, job.limit or 0) for job, value, worst in rows)
     max_value, step = nice_axis(largest, 32.0, (4, 8, 10, 20, 50))
     scale = (right - left) / max_value
-    body = [x_axis(left, right, top - 8, bottom, max_value, step, "мс, фоновый поток")]
+    body = [x_axis(left, right, top - 8, bottom, max_value, step, "ms, background thread")]
     for ix, line in enumerate(lines):
         y = top + ix * row_h + (row_h - bar_h) / 2
         cy = y + bar_h / 2
@@ -434,26 +434,26 @@ def chart_background(run: Run) -> str | None:
             continue
         job, value, worst = line
         body.append(f'<text class="label" x="{left - 12}" y="{cy + 4}" text-anchor="end">{esc(job.name)}</text>')
-        body.append(bar(left, y, max(value * scale, 2), bar_h, "s1", f"{job.name}: медиана {fmt(value)} мс", True))
+        body.append(bar(left, y, max(value * scale, 2), bar_h, "s1", f"{job.name}: median {fmt(value)} ms", True))
         end = left + max(value * scale, 2)
         if worst is not None:
             wx = left + worst * scale
-            body.append(f'<circle class="p99" cx="{wx:.1f}" cy="{cy}" r="5"><title>{esc(job.name)}: p99 или максимум {fmt(worst)} мс</title></circle>')
+            body.append(f'<circle class="p99" cx="{wx:.1f}" cy="{cy}" r="5"><title>{esc(job.name)}: p99 or maximum {fmt(worst)} ms</title></circle>')
             end = max(end, wx + 4)
         if job.limit is not None:
             lx = left + job.limit * scale
-            body.append(f'<line class="limit" x1="{lx:.1f}" y1="{cy - 11}" x2="{lx:.1f}" y2="{cy + 11}"><title>Порог: {fmt(job.limit)} мс</title></line>')
-        body.append(f'<text class="value" x="{end + 8:.1f}" y="{cy + 4}">{fmt(value)} мс</text>')
-    body.append(legend(left, bottom + 54, [("s1", "rect", "медиана"), ("p99", "dot", "p99 или максимум")]))
+            body.append(f'<line class="limit" x1="{lx:.1f}" y1="{cy - 11}" x2="{lx:.1f}" y2="{cy + 11}"><title>Limit: {fmt(job.limit)} ms</title></line>')
+        body.append(f'<text class="value" x="{end + 8:.1f}" y="{cy + 4}">{fmt(value)} ms</text>')
+    body.append(legend(left, bottom + 54, [("s1", "rect", "median"), ("p99", "dot", "p99 or maximum")]))
     body.append(f'<line class="limit" x1="{left + 280}" y1="{bottom + 44}" x2="{left + 280}" y2="{bottom + 56}"/>')
-    body.append(f'<text class="label" x="{left + 288}" y="{bottom + 54}">порог задачи</text>')
+    body.append(f'<text class="label" x="{left + 288}" y="{bottom + 54}">limit of the job</text>')
     return frame(
         width,
         bottom + 74,
-        "Фоновые задачи проекции, 100k строк",
-        "Полный Rebuild сортировок, групп и дерева, сжатие, задачи агрегатов и раскрытия",
+        "Background projection jobs, 100k rows",
+        "Full rebuilds of sorts, groups and the tree, compaction, aggregate and expand jobs",
         "".join(body),
-        "Время фоновых задач проекции",
+        "Time of the background projection jobs",
     )
 
 
@@ -480,19 +480,19 @@ class Budget:
 
 
 BUDGETS = [
-    Budget("S13", "«Подобрать все», один кадр", 16, ("max", "p99"), frame_column=6),
-    Budget("S11", "Быстрый фильтр P2: Rebuild", 30, ("p99", "max", "median")),
-    Budget("S14", "Выделить всё P2, ключи u64", 16, ("p99", "max", "median"), frame_column=5, prefer="u64"),
-    Budget("S9", "«Copy all» 100k строк: UI-поток", 50, (r"UI[ -]thread", "UI"), fallback=False),
-    Budget("S9", "«Copy all» 100k строк: фон", 500, ("background",), fallback=False),
-    Budget("S10", "План и узлы доступности", 1, ("p99",), frame_notes=True),
+    Budget("S13", "Autofit all, one frame", 16, ("max", "p99"), frame_column=6),
+    Budget("S11", "Quick filter on P2: rebuild", 30, ("p99", "max", "median")),
+    Budget("S14", "Select all on P2, u64 keys", 16, ("p99", "max", "median"), frame_column=5, prefer="u64"),
+    Budget("S9", "Copy all, 100k rows: UI thread", 50, (r"UI[ -]thread", "UI"), fallback=False),
+    Budget("S9", "Copy all, 100k rows: background", 500, ("background",), fallback=False),
+    Budget("S10", "Accessibility plan and nodes", 1, ("p99",), frame_notes=True),
     # Stage 2.
-    Budget("S9b", "«Copy all» всё раскрыто: UI-поток", 50, (r"UI[ -]thread", "UI"), fallback=False, stage=2),
-    Budget("S9b", "«Copy all» всё раскрыто: фон", 500, ("background",), fallback=False, stage=2),
-    Budget("S10b", "План доступности с заголовками", 1, ("p99",), frame_notes=True, stage=2),
-    Budget("S17", "Задача агрегатов, 1k изменений", 10, ("p99",), stage=2),
-    Budget("S18", "Задача раскрытия", 10, ("p99",), stage=2),
-    Budget("S18", "Кадр, показывающий раскрытие", 12, ("max",), frame_column=6, stage=2),
+    Budget("S9b", "Copy all, all expanded: UI thread", 50, (r"UI[ -]thread", "UI"), fallback=False, stage=2),
+    Budget("S9b", "Copy all, all expanded: background", 500, ("background",), fallback=False, stage=2),
+    Budget("S10b", "Accessibility plan with group headers", 1, ("p99",), frame_notes=True, stage=2),
+    Budget("S17", "Aggregate job, 1k changes", 10, ("p99",), stage=2),
+    Budget("S18", "Expand job", 10, ("p99",), stage=2),
+    Budget("S18", "The frame that shows the expansion", 12, ("max",), frame_column=6, stage=2),
 ]
 
 
@@ -540,7 +540,7 @@ def chart_budgets(run: Run) -> str | None:
     max_share = max(100 * value / budget.limit for budget, value, _ in rows)
     max_value, step = nice_axis(max_share, 100.0, (25, 50, 100, 250, 500, 1000))
     scale = (right - left) / max_value
-    body = [x_axis(left, right, top - 8, bottom, max_value, step, "% порога сценария")]
+    body = [x_axis(left, right, top - 8, bottom, max_value, step, "% of the scenario's limit")]
     for ix, line in enumerate(lines):
         y = top + ix * row_h + (row_h - bar_h) / 2
         if line is None:
@@ -551,20 +551,20 @@ def chart_budgets(run: Run) -> str | None:
         w = max(share * scale, 2)
         limit = f"{budget.limit:g}".replace(".", ",")
         metric = f" {label}" if label else ""
-        title = f"{budget.key}{metric}: {fmt(value)} мс, порог {limit} мс ({share:.0f}%)"
+        title = f"{budget.key}{metric}: {fmt(value)} ms, limit {limit} ms ({share:.0f}%)"
         body.append(f'<text class="label" x="{left - 12}" y="{y + bar_h / 2 + 4}" text-anchor="end">{esc(budget.name)}</text>')
         body.append(bar(left, y, w, bar_h, "s1", title, True))
-        body.append(f'<text class="value" x="{left + w + 8:.1f}" y="{y + bar_h / 2 + 4}">{fmt(value)} из {limit} мс</text>')
+        body.append(f'<text class="value" x="{left + w + 8:.1f}" y="{y + bar_h / 2 + 4}">{fmt(value)} of {limit} ms</text>')
     lx = left + 100 * scale
-    body.append(f'<line class="limit" x1="{lx:.1f}" y1="{top - 8}" x2="{lx:.1f}" y2="{bottom}"><title>Порог сценария: 100%</title></line>')
-    body.append(f'<text class="note" x="{lx - 6:.1f}" y="{top - 14}" text-anchor="end">порог</text>')
+    body.append(f'<line class="limit" x1="{lx:.1f}" y1="{top - 8}" x2="{lx:.1f}" y2="{bottom}"><title>Limit of the scenario: 100%</title></line>')
+    body.append(f'<text class="note" x="{lx - 6:.1f}" y="{top - 14}" text-anchor="end">limit</text>')
     return frame(
         width,
         bottom + 54,
-        "Разовые операции и задачи: доля порога",
-        "Время операции, делённое на порог её сценария; худший из вариантов сценария",
+        "One-shot operations and jobs: share of the limit",
+        "The operation's time divided by its scenario's limit; the worst of the scenario's variants",
         "".join(body),
-        "Время разовых операций в долях их порогов",
+        "Time of one-shot operations as shares of their limits",
     )
 
 

@@ -782,6 +782,9 @@ impl Transit {
             .is_some_and(|feed| feed.connection.starts_with("replay"));
         let subtitle = match self.choice.city() {
             City::Munich => "Munich by the timetable",
+            // The recording's tag stands beside the clock; the title says
+            // it too, so a replay never reads as live.
+            City::Helsinki if replay => "Helsinki from a recording",
             City::Helsinki => "Helsinki live",
         };
         let choice = self.choice;

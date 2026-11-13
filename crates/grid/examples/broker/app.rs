@@ -62,6 +62,8 @@ gpui_kit::actions!(
     [
         /// Moves the focus to the search box.
         FocusSearch,
+        /// Moves the focus back to the watchlist.
+        FocusWatchlist,
         /// Turns the ticket to Buy and puts the keyboard in it.
         Buy,
         /// Turns the ticket to Sell and puts the keyboard in it.
@@ -90,8 +92,9 @@ const FIRST_TICKER: &str = "AAPL";
 /// made from this table. `secondary` is Cmd on macOS and Ctrl elsewhere.
 /// Alt keeps the letters free for the search box and the ticket's fields,
 /// and Enter for the grids.
-const KEYS: [(&str, Command); 9] = [
+const KEYS: [(&str, Command); 10] = [
     ("secondary-f", Command::FocusSearch),
+    ("alt-w", Command::FocusWatchlist),
     ("alt-b", Command::Trade(Side::Buy)),
     ("alt-s", Command::Trade(Side::Sell)),
     ("alt-enter", Command::Submit),
@@ -106,6 +109,7 @@ const KEYS: [(&str, Command); 9] = [
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Command {
     FocusSearch,
+    FocusWatchlist,
     Trade(Side),
     Submit,
     ToggleTheme,
@@ -120,6 +124,7 @@ impl Command {
         let context = Some(KEY_CONTEXT);
         match self {
             Self::FocusSearch => KeyBinding::new(keystrokes, FocusSearch, context),
+            Self::FocusWatchlist => KeyBinding::new(keystrokes, FocusWatchlist, context),
             Self::Trade(Side::Buy) => KeyBinding::new(keystrokes, Buy, context),
             Self::Trade(Side::Sell) => KeyBinding::new(keystrokes, Sell, context),
             Self::Submit => KeyBinding::new(keystrokes, Submit, context),
@@ -135,6 +140,7 @@ impl Command {
     fn hint(self) -> &'static str {
         match self {
             Self::FocusSearch => "Search",
+            Self::FocusWatchlist => "Watchlist",
             Self::Trade(side) => side.label(),
             Self::Submit => "Submit",
             Self::ToggleTheme => "Theme",
@@ -149,7 +155,8 @@ impl Command {
 /// and Option types one: Option-B arrives as `alt-∫` (U.S. layout), which
 /// `alt-b` does not match. Natively the key is the letter, so these never
 /// match there; elsewhere a browser delivers `alt-b` itself.
-const BROWSER_OPTION_KEYS: [(&str, Command); 4] = [
+const BROWSER_OPTION_KEYS: [(&str, Command); 5] = [
+    ("alt-∑", Command::FocusWatchlist),
     ("alt-∫", Command::Trade(Side::Buy)),
     ("alt-ß", Command::Trade(Side::Sell)),
     ("alt-†", Command::ToggleTheme),
@@ -472,6 +479,16 @@ impl Broker {
 
     fn on_focus_search(&mut self, _: &FocusSearch, window: &mut Window, cx: &mut Context<Self>) {
         self.search.update(cx, |input, cx| input.focus(window, cx));
+    }
+
+    fn on_focus_watchlist(
+        &mut self,
+        _: &FocusWatchlist,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let focus = self.watchlist.focus_handle(cx);
+        window.focus(&focus, cx);
     }
 
     fn on_buy(&mut self, _: &Buy, window: &mut Window, cx: &mut Context<Self>) {
@@ -877,6 +894,7 @@ impl Render for Broker {
             .size_full()
             .key_context(KEY_CONTEXT)
             .on_action(cx.listener(Self::on_focus_search))
+            .on_action(cx.listener(Self::on_focus_watchlist))
             .on_action(cx.listener(Self::on_buy))
             .on_action(cx.listener(Self::on_sell))
             .on_action(cx.listener(Self::on_submit))

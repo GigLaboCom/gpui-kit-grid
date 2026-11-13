@@ -2,6 +2,9 @@
   "name": "gpui-kit-grid-site",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": ">=22.23.4"
+  },
   "scripts": {
     "dev": "bunx --bun astro dev",
     "build": "bunx --bun astro build",

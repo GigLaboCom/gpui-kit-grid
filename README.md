@@ -10,12 +10,12 @@ It is a separate crate on top of gpui-kit. Rows are addressed by key and written
 
 ## Why a new grid when gpui-kit has DataTable
 
-`DataTable` builds an element for each cell, addresses rows by index and calls its delegate through `&mut` on the UI thread. That is enough for static tables, not for live data: with 1500 visible cells under 2k updates a second a frame takes about 14 ms, and after a re-sort the selection points at a different row.
+`DataTable` builds an element for each cell, addresses rows by index and calls its delegate through `&mut` on the UI thread. That is enough for static tables, not for live data: with 1500 visible cells under 2k updates a second a frame takes 12–14 ms, and after a re-sort the selection points at a different row.
 
 |  | `DataTable` | `gpui-kit-grid` |
 |---|---|---|
 | Painting | An element per cell | One custom element, glyphs painted directly |
-| Frame, 1500 cells, 2k updates/s | ~14 ms | ~1.4 ms |
+| Frame, 1500 cells, 2k updates/s | 12–14 ms | ~1.1 ms |
 | Rows and selection | By index | By key: survive re-sorting and removal |
 | Data | `&mut` delegate on the UI thread | `GridWriter` from any thread, background ingest |
 | Sorting and filtering | Synchronous, on click | In the background, automatic when data changes |
@@ -181,6 +181,8 @@ The examples download their data with the scripts above; nothing is committed.
 | `wiki` | [Wikimedia EventStreams](https://stream.wikimedia.org/v2/stream/recentchange); titles by Wikimedia contributors | CC BY-SA 4.0 |
 | `ships` | Source: Fintraffic / [digitraffic.fi](https://www.digitraffic.fi/en/marine-traffic/) | CC BY 4.0 |
 | `quotes`, `desk`, `ladder`, `wire`, `broker` | Simulated prices, not market data | — |
+| `ops` | Simulated: a made-up data center | — |
+| `perf` | This machine's processes and GPU, read locally; nothing leaves the machine | — |
 
 The live examples keep their sources' rules: one connection each, backoff with jitter on reconnect, and no personal data kept. [Licenses](https://gkg.giglabo.com/licenses/) lists what the web demos serve and their third-party notices.
 
