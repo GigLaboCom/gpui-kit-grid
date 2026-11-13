@@ -1,7 +1,7 @@
 [package]
 name = "gpui-kit-grid-macros"
 description = "The derive macro of gpui-kit-grid."
-version = "0.0.0"
+version = "1.0.0"
 keywords = ["gpui", "grid", "derive"]
 categories = ["gui", "development-tools::procedural-macro-helpers"]
 edition.workspace = true

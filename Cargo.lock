@@ -2437,7 +2437,7 @@ dependencies = [
 
 [[package]]
 name = "gpui-kit-grid"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
  "async-channel",
  "chrono",
@@ -2468,11 +2468,11 @@ dependencies = [
 
 [[package]]
 name = "gpui-kit-grid-feed"
-version = "0.0.0"
+version = "1.0.0"
 
 [[package]]
 name = "gpui-kit-grid-gateway"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
@@ -2485,7 +2485,7 @@ dependencies = [
 
 [[package]]
 name = "gpui-kit-grid-macros"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
  "gpui-kit-grid",
  "proc-macro2",

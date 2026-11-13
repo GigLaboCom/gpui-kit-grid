@@ -1,7 +1,7 @@
 [package]
 name = "gpui-kit-grid"
 description = "A live-updating data grid for gpui-kit applications."
-version = "0.0.0"
+version = "1.0.0"
 keywords = ["gpui", "grid", "datagrid", "table", "live"]
 categories = ["gui"]
 edition.workspace = true

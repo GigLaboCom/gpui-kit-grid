@@ -176,18 +176,42 @@ controls, combined with shadcn/ui design.
 
 ## Releases
 
-The crate and the site are released separately, each on its own tags.
+The library and the site are released separately, each on its own tags.
+Changes pile up on `main` through pull requests; a tag cuts a release.
 
 | | Tags | What a tag does |
 |---|---|---|
-| The crate | `vX.Y.Z` | Runs CI on the tag. The crate is not on crates.io yet. |
-| The site | `site-vX.Y.Z` | `.github/workflows/site.yml` scans the history for secrets, publishes the image `ghcr.io/giglabocom/gpui-kit-grid-site` (`X.Y.Z`, `X.Y`, `X` from 1.0, `latest`; amd64 and arm64), deploys to Cloudflare and opens a GitHub release. |
+| The library | `vX.Y.Z` | CI runs on the tag; once every job passes, its Release job checks that the tag names the crates' version and that the site's install snippets name the tag, scans the history for secrets and opens the GitHub release (the repository's latest) with the `Cargo.toml` lines to use. Not on crates.io yet: the crate depends on gpui-kit by git revision. |
+| The site | `site-vX.Y.Z` | `.github/workflows/site.yml` scans the history for secrets, publishes the image `ghcr.io/giglabocom/gpui-kit-grid-site` (`X.Y.Z`, `X.Y`, `X` from 1.0, `latest`; amd64 and arm64), deploys to Cloudflare and opens a GitHub release with the site's commits since its last tag. |
 
-Changes pile up on `main`; a tag cuts the release. The site is the pages,
-the live demos and the API reference, so a change under `crates/` reaches it
-as well as one under `site/`. `script/release-site` reads the paths the
-site workflow builds on, lists the commits there since the last site tag
-and makes the tag; with nothing new for the site it makes none:
+### The library
+
+Versions follow semver: the public API of `gpui-kit-grid`,
+`gpui-kit-grid-feed` and `gpui-kit-grid-macros` (and the gateway binary,
+which ships with them) share one version.
+
+1. In a pull request, set `version` in `crates/grid`, `crates/grid-feed`,
+   `crates/grid-macros` and `crates/grid-gateway` (`Cargo.toml`), let cargo
+   update both lock files (`Cargo.lock`, `crates/grid-web/Cargo.lock`), and
+   name the new tag in the install snippets
+   (`site/src/content/docs/start.md`, `guides/columns.md`).
+2. Merge it, then tag that commit of `main` and push the tag:
+
+   ```bash
+   git tag -a v1.0.0 -m "gpui-kit-grid 1.0.0" origin/main
+   git push origin v1.0.0
+   ```
+
+A wrong tag fails the Release job before anything is published; delete it
+(`git push origin :refs/tags/v1.0.0`), fix, and tag again.
+
+### The site
+
+The site is the pages, the live demos and the API reference, so a change
+under `crates/` reaches it as well as one under `site/`.
+`script/release-site` reads the paths the site workflow builds on, lists
+the commits there since the last site tag and makes the tag; with nothing
+new for the site it makes none:
 
 ```bash
 script/release-site                 # the site's changes since its last release
@@ -197,6 +221,12 @@ script/release-site 0.2.0 --push    # tag site-v0.2.0 at origin/main and push it
 A pull request and `main` build the image and try it (`docker/site/smoke.sh`)
 without publishing it. Run by hand, the Site workflow publishes the image of
 any ref as `edge`; only a tag moves `latest` and the deployed site.
+
+The demos' recordings (the wiki's replay, the ships' and Helsinki's
+fallback) are not committed: the Site workflow downloads them from the
+release `site-recordings-1` and checks them against
+`script/site-recordings.sha256`. Without that release the site goes out
+without them, with a warning.
 
 ## Profile the performance
 
