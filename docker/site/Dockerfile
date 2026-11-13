@@ -2,7 +2,7 @@
 
 # The documentation site as a container image: the site/dist that CI builds
 # and checks (the Astro pages, the demos under /demo/ and /embed/, rustdoc
-# under /api/), served by nginx the way Cloudflare serves it. Nothing is
+# under /api/), served by nginx: this image is the site. Nothing is
 # compiled here: the Rust, wasm and Astro builds run once, before, and
 # docker/site/stage.sh prepares the context (the header maps generated from
 # the site's _headers, a .gz next to every file worth compressing), so every

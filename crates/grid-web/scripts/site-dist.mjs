@@ -21,8 +21,8 @@
 //
 // Never `.built` (a local path) or dot files, and no staged file may name
 // the builder's home folder (`build-wasm.sh` remaps the paths a module
-// carries). Then it checks the whole dist against Cloudflare's static
-// assets limits (25 MiB a file, 20,000 files) and prints its size and
+// carries). Then it checks the whole dist against size limits (25 MiB a
+// file, 20,000 files, Cloudflare's for static assets) and prints its size and
 // largest files. Exits 1 on any problem.
 
 import {
@@ -49,7 +49,7 @@ const DIST = resolve(
 const DEMO = join(DIST, 'demo');
 // The crate whose page `/api/` forwards to.
 const CRATE = 'gpui_kit_grid';
-// Cloudflare Workers static assets (free plan).
+// Cloudflare's static-asset limits (free plan), kept as a bound on dist.
 const MAX_FILE = 25 * 1024 * 1024;
 const MAX_FILES = 20000;
 // Data the site must never serve, whatever a build left in `data/`.

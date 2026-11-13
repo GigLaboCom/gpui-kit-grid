@@ -1,5 +1,6 @@
-# Response headers by path, for Cloudflare's static assets (copied to the
-# root of the built site). Every rule that matches a request adds its
+# Response headers by path, in the `_headers` format of Cloudflare's static
+# assets (copied to the root of the built site; the image's nginx gets them
+# from docker/site/headers.awk). Every rule that matches a request adds its
 # headers, and a header set twice is joined with a comma, so the cache
 # rules below sit on paths that never overlap.
 

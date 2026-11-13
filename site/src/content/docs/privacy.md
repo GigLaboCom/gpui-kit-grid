@@ -52,8 +52,9 @@ example it shows (its module and fonts) from this site.
 
 ## Hosting
 
-The site is served by Cloudflare, which processes your IP address and the
-request to deliver the pages and protect the service, as any web host does.
+The site runs on a server at Hetzner in Germany, behind Cloudflare. Both
+process your IP address and the request to deliver the pages and protect
+the service, as any web host does.
 
 ## Live demos
 
