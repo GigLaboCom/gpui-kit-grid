@@ -171,6 +171,30 @@ controls, combined with shadcn/ui design.
   building desktop apps, not web apps.
 - Use the `md` size for most cases and as the default.
 
+## Releases
+
+The crate and the site are released separately, each on its own tags.
+
+| | Tags | What a tag does |
+|---|---|---|
+| The crate | `vX.Y.Z` | Runs CI on the tag. The crate is not on crates.io yet. |
+| The site | `site-vX.Y.Z` | `.github/workflows/site.yml` scans the history for secrets, publishes the image `ghcr.io/giglabocom/gpui-kit-grid-site` (`X.Y.Z`, `X.Y`, `X` from 1.0, `latest`; amd64 and arm64), deploys to Cloudflare and opens a GitHub release. |
+
+Changes pile up on `main`; a tag cuts the release. The site is the pages,
+the live demos and the API reference, so a change under `crates/` reaches it
+as well as one under `site/`. `script/release-site` reads the paths the
+site workflow builds on, lists the commits there since the last site tag
+and makes the tag; with nothing new for the site it makes none:
+
+```bash
+script/release-site                 # the site's changes since its last release
+script/release-site 0.2.0 --push    # tag site-v0.2.0 at origin/main and push it
+```
+
+A pull request and `main` build the image and try it (`docker/site/smoke.sh`)
+without publishing it. Run by hand, the Site workflow publishes the image of
+any ref as `edge`; only a tag moves `latest` and the deployed site.
+
 ## Profile the performance
 
 When you change rendering, ingestion or the engine, profile it:

@@ -13,8 +13,9 @@ on:
   push:
     branches:
       - main
+    # The crate's tags; the site's own (`site-v*`) only run site.yml.
     tags:
-      - "*"
+      - "v*"
 
 permissions:
   contents: read

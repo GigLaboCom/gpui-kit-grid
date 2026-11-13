@@ -144,7 +144,7 @@ Run one with `cargo run --release -p gpui-kit-grid --example <name>` (`spike_ben
 - Guides: [grouping](https://gkg.giglabo.com/guides/grouping/), [tree](https://gkg.giglabo.com/guides/tree/), [live changes](https://gkg.giglabo.com/guides/live-changes/), [cells](https://gkg.giglabo.com/guides/cells/), [editing](https://gkg.giglabo.com/guides/editing/), [export](https://gkg.giglabo.com/guides/export/), [drag and drop](https://gkg.giglabo.com/guides/drag-and-drop/), [columns](https://gkg.giglabo.com/guides/columns/), [keyboard](https://gkg.giglabo.com/guides/keyboard/), [settings](https://gkg.giglabo.com/guides/settings/).
 - [Cookbook](https://gkg.giglabo.com/cookbook/), [Performance](https://gkg.giglabo.com/performance/), [Web](https://gkg.giglabo.com/web/), [Embedding](https://gkg.giglabo.com/embedding/).
 
-The site is built from `site/` (Astro Starlight): `bun install --cwd site --frozen-lockfile`, then `bun run --cwd site build` and `bun test --cwd site`. Code on its pages comes from `// #region` blocks of compiled files, and `bun test` checks that this README's snippets match them.
+The site is built from `site/` (Astro Starlight): `bun install --cwd site --frozen-lockfile`, then `bun run --cwd site build` and `bun test --cwd site`. Code on its pages comes from `// #region` blocks of compiled files, and `bun test` checks that this README's snippets match them. The site also ships as a container image, `ghcr.io/giglabocom/gpui-kit-grid-site` (nginx, `docker/site/`), released on its own tags; see "Releases" in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Development
 
