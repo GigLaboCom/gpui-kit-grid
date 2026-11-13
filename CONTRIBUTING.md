@@ -223,6 +223,12 @@ without publishing it. Run by hand, the Site workflow publishes the image of
 any ref as `edge`; only a tag moves `latest` and makes a version the
 site's host can move to.
 
+Analytics: Google Tag Manager in Consent Mode v2, loaded only on
+https://gkg.giglabo.com (`site/src/lib/consent.ts`), with a cookie banner for
+visitors in the EU (`site/src/components/cookie-consent/`). A local build, a
+preview or someone else's copy of the image sends nothing. Anything new the
+site stores in the browser needs a row in the table on the Privacy page.
+
 The demos' recordings (the wiki's replay, the ships' and Helsinki's
 fallback) are not committed: the Site workflow downloads them from the
 release `site-recordings-1` and checks them against

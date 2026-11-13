@@ -1,0 +1,15 @@
+---
+// The cookie banner: the element and the script that defines it. Rendered by
+// Footer.astro, so it is on every page; it does nothing off the published
+// host (see `analyticsActive` in src/lib/consent.ts).
+---
+
+<cookie-consent-banner></cookie-consent-banner>
+
+<script>
+	import { CookieConsentBanner } from './CookieConsent';
+
+	if (!customElements.get('cookie-consent-banner')) {
+		customElements.define('cookie-consent-banner', CookieConsentBanner);
+	}
+</script>

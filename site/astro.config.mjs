@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import embed from './integrations/embed.mjs';
 import { satteri } from '@astrojs/markdown-satteri';
 import markdownRegions from './src/lib/markdown-regions.ts';
+import { consentHead } from './src/lib/consent.ts';
 
 // The repository's root: code on the pages comes from regions of its
 // compiled files, and the roadmap page from its `ROADMAP.md`.
@@ -34,6 +35,9 @@ export default defineConfig({
         dark: './src/assets/mark-dark.svg',
       },
       favicon: '/favicon.svg',
+      // Google Consent Mode v2 defaults (all denied) and the GTM container,
+      // only on gkg.giglabo.com: src/lib/consent.ts; the banner is in Footer.
+      head: [{ tag: 'script', content: consentHead() }],
       social: [{ icon: 'github', label: 'Repository', href: 'https://github.com/GigLaboCom/gpui-kit-grid' }],
       customCss: [
         '@fontsource/ibm-plex-sans/latin-400.css',
