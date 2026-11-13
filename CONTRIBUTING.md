@@ -107,9 +107,9 @@ before a pull request:
 | GPUI only through a pinned gpui-kit | `bun script/check-gpui-kit-pin.ts`, and again with `crates/grid-web/Cargo.toml` | Linux |
 | Format | `cargo fmt --all --check`, and in `crates/grid-web` | Linux |
 | Unused dependencies | `cargo machete` | Linux |
-| Clippy, warnings denied, all targets | `cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support -- --deny warnings`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | macOS |
-| The library without features | `cargo check -p gpui-kit-grid` | macOS |
-| Docs, warnings denied | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --features gpui-kit-grid/decimal,gpui-kit-grid/derive` | macOS |
+| Clippy, warnings denied, all targets | `cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support -- --deny warnings`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | Linux |
+| The library without features | `cargo check -p gpui-kit-grid` | Linux |
+| Docs, warnings denied | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --features gpui-kit-grid/decimal,gpui-kit-grid/derive` | Linux |
 | Tests (unit, property, headless UI) | `cargo test --workspace --features gpui-kit-grid/test-support`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | macOS, Linux, Windows |
 | Doc tests | `cargo test --workspace --features gpui-kit-grid/test-support --doc` | macOS |
 | The library for the browser | `RUSTC_BOOTSTRAP=1 cargo check -p gpui-kit-grid --lib --target wasm32-unknown-unknown --features decimal,derive` | Linux |

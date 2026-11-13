@@ -6,7 +6,9 @@
 # - the library is also checked without features and for
 #   `wasm32-unknown-unknown`, and the web examples (`crates/grid-web`, a
 #   workspace of their own) are linted;
-# - gpui-kit-only jobs (recipes, gpui-shell, component-shell, website) are dropped.
+# - gpui-kit-only jobs (recipes, gpui-shell, component-shell, website) are dropped;
+# - lint and docs run on Linux, and macOS runs the tests only: macOS runners
+#   are few, and the heavy, platform-neutral jobs need none.
 name: CI
 on:
   pull_request:
@@ -62,15 +64,20 @@ jobs:
       - name: Machete
         run: cargo machete
 
+  # On Linux: code built only for macOS (`cfg(target_os = "macos")`) is
+  # compiled by the macOS tests, not linted here.
   lint:
     name: Lint
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy
           cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: rui314/setup-mold@v1
+      - name: Install system dependencies
+        run: script/bootstrap
       - name: Lint
         run: cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support --locked -- --deny warnings
       # The off-by-default `decimal` feature adds `CellValue::Decimal`.
@@ -82,12 +89,15 @@ jobs:
 
   docs:
     name: Docs and the library alone
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: rui314/setup-mold@v1
+      - name: Install system dependencies
+        run: script/bootstrap
       # What an application gets with no feature turned on.
       - name: Check without features
         run: cargo check -p gpui-kit-grid --locked
