@@ -4,7 +4,7 @@
 # API reference (.github/workflows/site.yml). The site has a release line of
 # its own, tags `site-vX.Y.Z`; `vX.Y.Z` stays for the crate. Pushing such a
 # tag makes the workflow publish the image
-# ghcr.io/<owner>/gpui-kit-grid-site:{X.Y.Z, X.Y, X from 1.0, latest}, deploy
+# ghcr.io/giglabocom/gpui-kit-grid-site:{X.Y.Z, X.Y, X from 1.0, latest}, deploy
 # the site to Cloudflare and open the GitHub release.
 #
 # Only what reaches the site counts: the paths the workflow builds on (its

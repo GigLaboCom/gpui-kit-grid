@@ -74,7 +74,7 @@ A saved layout survives schema changes: unknown columns are ignored and new ones
 With the `derive` feature, `#[derive(GridColumns)]` writes the column enum's implementation:
 
 ```toml
-gpui-kit-grid = { git = "https://github.com/GigLaboCom/gpui-kit-grid", rev = "<commit>", features = ["derive"] }
+gpui-kit-grid = { git = "https://github.com/GigLaboCom/gpui-kit-grid", branch = "main", features = ["derive"] }
 ```
 
 ```rust src="crates/grid/tests/derive.rs#derived-columns"

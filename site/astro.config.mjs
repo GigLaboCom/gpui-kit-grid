@@ -34,7 +34,6 @@ export default defineConfig({
         dark: './src/assets/mark-dark.svg',
       },
       favicon: '/favicon.svg',
-      // The repository's address is a placeholder until it exists.
       social: [{ icon: 'github', label: 'Repository', href: 'https://github.com/GigLaboCom/gpui-kit-grid' }],
       customCss: [
         '@fontsource/ibm-plex-sans/latin-400.css',

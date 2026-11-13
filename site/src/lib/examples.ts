@@ -206,7 +206,7 @@ export const EXAMPLES: Example[] = [
 	},
 ];
 
-/** The repository's address of `path` (a placeholder until it exists). */
+/** The repository's address of `path`. */
 export function sourceUrl(path: string): string {
 	const kind = /\.\w+$/.test(path) ? 'blob' : 'tree';
 	return `https://github.com/GigLaboCom/gpui-kit-grid/${kind}/main/${path}`;

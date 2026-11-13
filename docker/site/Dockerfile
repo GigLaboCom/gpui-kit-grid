@@ -11,7 +11,10 @@
 #   docker/site/stage.sh target/site-image
 #   docker build -t gpui-kit-grid-site target/site-image
 #   docker/site/smoke.sh gpui-kit-grid-site
-#   docker run -p 8080:8080 --read-only --tmpfs /tmp gpui-kit-grid-site
+#   docker run -p 127.0.0.1:8080:8080 --read-only --tmpfs /tmp gpui-kit-grid-site
+#
+# Publish the port on 127.0.0.1 and put a proxy in front: a bare `-p 8080:8080`
+# opens it on every interface of the host, past a host firewall such as ufw.
 
 FROM nginx:1.29-alpine
 

@@ -18,7 +18,7 @@ import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { metaValue, metaWords, readRegion } from './regions.ts';
 
-/** The repository's address on its host; a placeholder until it exists. */
+/** The repository's address on its host. */
 export const REPOSITORY = 'https://github.com/GigLaboCom/gpui-kit-grid';
 
 const INCLUDE = /^<!--\s*include\s+(\S+)\s*-->$/;

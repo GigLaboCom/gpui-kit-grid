@@ -14,7 +14,7 @@
 #   uploads a preview version under the alias `pr-<number>`, once the
 #   Cloudflare secrets exist.
 # - A tag `site-vX.Y.Z` releases: the history is scanned for secrets, the
-#   image goes to ghcr.io/<owner>/gpui-kit-grid-site as X.Y.Z, X.Y, X (from
+#   image goes to ghcr.io/giglabocom/gpui-kit-grid-site as X.Y.Z, X.Y, X (from
 #   1.0) and latest, for amd64 and arm64, the site is deployed to Cloudflare,
 #   and the GitHub release lists the site's commits since the last site tag.
 # - Run by hand (workflow_dispatch), it publishes the image of that ref as
@@ -376,7 +376,7 @@ jobs:
             echo "The documentation site, its live demos and the API reference: https://gkg.giglabo.com"
             echo
             echo '```bash'
-            echo "docker run -p 8080:8080 --read-only --tmpfs /tmp $IMAGE:$version"
+            echo "docker run -p 127.0.0.1:8080:8080 --read-only --tmpfs /tmp $IMAGE:$version"
             echo '```'
             echo
             echo "Digest: \`$DIGEST\`"

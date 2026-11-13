@@ -12,11 +12,6 @@ import { join, posix, relative } from 'node:path';
 const DIST = join(import.meta.dir, '..', 'dist');
 const ASSEMBLED_BY_DEPLOY = ['/api/', '/demo/'].filter((prefix) => !existsSync(join(DIST, prefix)));
 const RUSTDOC = 'api';
-// The repository's placeholder, replaced before publishing, which looks
-// like a relative link. Spelled in parts, so that filling it in leaves this
-// pattern alone.
-const PLACEHOLDER = /^REPO[_]URL(?![A-Za-z0-9_])/;
-
 function pages(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
@@ -50,7 +45,6 @@ describe.skipIf(!existsSync(DIST))('links in dist/', () => {
         const link = match[1].replaceAll('&amp;', '&');
         if (link === '' || link.startsWith('#') || link.startsWith('//')) continue;
         if (/^[a-z][a-z0-9+.-]*:/i.test(link)) continue;
-        if (PLACEHOLDER.test(link)) continue;
         const target = link.replace(/[?#].*$/, '');
         if (target === '') continue;
         const path = posix.normalize(

@@ -12,7 +12,7 @@ The crate is not on crates.io yet: it depends on gpui-kit by git revision, and c
 ```toml
 [dependencies]
 gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "146ab45ac0d0cc9dad5f5fd05ecd38da9b3db6e7" }
-gpui-kit-grid = { git = "https://github.com/GigLaboCom/gpui-kit-grid", rev = "<commit>" }
+gpui-kit-grid = { git = "https://github.com/GigLaboCom/gpui-kit-grid", branch = "main" }
 ```
 
 The application reaches GPUI through gpui-kit (`gpui_kit::App`, `gpui_kit::Window` and the rest), as the grid does; it does not list a GPUI crate of its own.
