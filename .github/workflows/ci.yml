@@ -1,0 +1,265 @@
+# Adapted from gpui-kit `.github/workflows/ci.yml`. Differences:
+# - `cargo fmt --check` is enforced (a written rule in gpui-kit, not a CI job there);
+# - clippy also lints test and example code (`--all-targets`, with `test-support`
+#   so the headless UI tests and `spike_bench` are linted too);
+# - the gpui-pre pin check becomes "GPUI only through a pinned gpui-kit";
+# - the library is also checked without features and for
+#   `wasm32-unknown-unknown`, and the web examples (`crates/grid-web`, a
+#   workspace of their own) are linted;
+# - gpui-kit-only jobs (recipes, gpui-shell, component-shell, website) are dropped.
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    # The crate's tags; the site's own (`site-v*`) only run site.yml.
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.ref_name == 'main' && github.sha || 'anysha' }}
+  cancel-in-progress: true
+
+env:
+  # Debug info is most of a build's disk footprint and a large share of its
+  # link time, and nothing in CI reads it (same reasoning as gpui-kit).
+  CARGO_PROFILE_DEV_DEBUG: 0
+
+# Only `main` saves caches; pull requests restore the closest `main` cache.
+# Keep each job on one set of gpui-kit features: a second `cargo` invocation
+# that changes them recompiles GPUI from scratch. The grid's own `decimal` and
+# `derive` features do not reach gpui-kit.
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Typo check
+        uses: crate-ci/typos@v1.40.0
+      - uses: oven-sh/setup-bun@v2
+      # `CI` is set, so a path dependency or a patched Cargo.lock fails here.
+      - name: GPUI only through a pinned gpui-kit
+        run: |
+          bun script/check-gpui-kit-pin.ts
+          bun script/check-gpui-kit-pin.ts crates/grid-web/Cargo.toml
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+          cache: false
+      - name: Format
+        run: |
+          cargo fmt --all --check
+          cd crates/grid-web && cargo fmt --all --check
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-machete@0.9.1
+      # Walks every manifest under the repository, `crates/grid-web` included.
+      - name: Machete
+        run: cargo machete
+
+  lint:
+    name: Lint
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy
+          cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support --locked -- --deny warnings
+      # The off-by-default `decimal` feature adds `CellValue::Decimal`.
+      - name: Lint with decimal
+        run: cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support,gpui-kit-grid/decimal --locked -- --deny warnings
+      # The off-by-default `derive` feature adds `#[derive(GridColumns)]`.
+      - name: Lint with derive
+        run: cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support,gpui-kit-grid/derive --locked -- --deny warnings
+
+  docs:
+    name: Docs and the library alone
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+      # What an application gets with no feature turned on.
+      - name: Check without features
+        run: cargo check -p gpui-kit-grid --locked
+      - name: Docs
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --no-deps --features gpui-kit-grid/decimal,gpui-kit-grid/derive --locked
+
+  wasm:
+    name: Web
+    runs-on: ubuntu-latest
+    env:
+      # gpui-pre 0.3.8 always enables gpui_web's `multithreaded` feature, whose
+      # `wasm_thread` dependency needs a nightly feature gate even in a
+      # single-threaded build; nothing here uses a nightly feature otherwise
+      # (as `crates/grid-web/scripts/build-wasm.sh`).
+      RUSTC_BOOTSTRAP: 1
+    steps:
+      - uses: actions/checkout@v4
+      # The web shell bundles a few gpui-kit icons from `../gpui-kit`
+      # (`crates/grid-web/shell/src/icons.rs`), read at the revision
+      # `Cargo.toml` pins; cargo itself fetches that revision from git.
+      - name: gpui-kit checkout for the web examples' icons
+        run: |
+          rev=$(sed -n 's/^gpui-kit = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)
+          test -n "$rev"
+          git init -q ../gpui-kit
+          git -C ../gpui-kit fetch -q --depth 1 https://github.com/longbridge/gpui-kit "$rev"
+          git -C ../gpui-kit checkout -q FETCH_HEAD
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-unknown-unknown
+          components: clippy
+          cache-workspaces: |
+            .
+            crates/grid-web
+          cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Check the library for the browser
+        run: cargo check -p gpui-kit-grid --lib --target wasm32-unknown-unknown --features decimal,derive --locked
+      # The shell and every example's crate (`shell/`, `apps/*`).
+      - name: Lint the web examples
+        working-directory: crates/grid-web
+        run: cargo clippy --workspace --target wasm32-unknown-unknown --locked -- --deny warnings
+
+  test:
+    name: Test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            run_on: macos-latest
+          - target: x86_64-linux-gnu
+            run_on: ubuntu-latest
+          - target: x86_64-windows-msvc
+            run_on: windows-latest
+    runs-on: ${{ matrix.run_on }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+      # Replaces the system `ld` on Linux and is a no-op elsewhere.
+      - uses: rui314/setup-mold@v1
+      - name: Install system dependencies
+        if: ${{ matrix.run_on != 'windows-latest' }}
+        run: script/bootstrap
+      # The grid crate's `test-support` feature turns on `gpui-kit/test-support`
+      # (headless UI harness: `#[gpui_kit::test]`, `TestWindowExt`), the same
+      # way gpui-kit routes it through `gpui-component-story/test-support`.
+      - name: Test
+        run: cargo test --workspace --features gpui-kit-grid/test-support --locked
+      - name: Test with decimal
+        run: cargo test --workspace --features gpui-kit-grid/test-support,gpui-kit-grid/decimal --locked
+      - name: Test with derive
+        run: cargo test --workspace --features gpui-kit-grid/test-support,gpui-kit-grid/derive --locked
+      - name: Doc tests
+        if: ${{ matrix.run_on == 'macos-latest' }}
+        run: cargo test --workspace --features gpui-kit-grid/test-support --locked --doc
+
+  examples:
+    name: Examples (release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: rui314/setup-mold@v1
+      - name: Install system dependencies
+        run: script/bootstrap
+      # Every example but `spike_bench`, which needs `test-support` and
+      # headless Metal (macOS); the lint job builds it.
+      - name: Build the examples
+        run: cargo build --release -p gpui-kit-grid --examples --locked
+
+  # A crate tag `vX.Y.Z`, once every job above passed on it: the release of
+  # the library (CONTRIBUTING.md, "Releases"). The tag must name the
+  # crates' version, and the install snippets on the site the tag; the
+  # history carries no secret; the GitHub release opens with what to put in
+  # Cargo.toml and the changes since the previous `vX.Y.Z`, and is the
+  # repository's latest (site releases never are). Not on crates.io: the
+  # crate depends on gpui-kit by git revision, which crates.io refuses.
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [checks, lint, docs, wasm, test, examples]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      # The scanner the git hooks run, checked against its release's sums.
+      GITLEAKS_VERSION: 8.30.1
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: The tag names the library's version
+        run: |
+          version="${TAG#v}"
+          for manifest in crates/grid/Cargo.toml crates/grid-feed/Cargo.toml \
+            crates/grid-macros/Cargo.toml crates/grid-gateway/Cargo.toml; do
+            actual="$(sed -n 's/^version = "\(.*\)"$/\1/p' "$manifest" | head -1)"
+            if [ "$actual" != "$version" ]; then
+              echo "::error file=$manifest::version $actual, but the tag is $TAG"
+              exit 1
+            fi
+          done
+          for page in site/src/content/docs/start.md site/src/content/docs/guides/columns.md; do
+            if ! grep -q "tag = \"$TAG\"" "$page"; then
+              echo "::error file=$page::the install snippet does not name $TAG"
+              exit 1
+            fi
+          done
+
+      # Nothing ships from a history that carries a secret.
+      - name: Scan the history for secrets
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          sums="gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          (
+            cd "$RUNNER_TEMP"
+            curl --fail --location --silent --show-error --remote-name "$base/$archive" --remote-name "$base/$sums"
+            grep " $archive\$" "$sums" | sha256sum --check --strict
+            tar --extract --gzip --file "$archive" gitleaks
+          )
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact --config .gitleaks.toml .
+
+      - name: Cut the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rev="$(sed -n 's/^gpui-kit = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)"
+          test -n "$rev"
+          {
+            echo 'Add it from git, with gpui-kit at the revision it is built against (the crate is not on crates.io yet):'
+            echo
+            echo '```toml'
+            echo '[dependencies]'
+            echo "gpui-kit = { git = \"https://github.com/longbridge/gpui-kit\", rev = \"$rev\" }"
+            echo "gpui-kit-grid = { git = \"https://github.com/$GITHUB_REPOSITORY\", tag = \"$TAG\" }"
+            echo '```'
+            echo
+            echo 'Getting started: https://gkg.giglabo.com/start/'
+          } > "$RUNNER_TEMP/notes.md"
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$TAG^" 2>/dev/null || true)"
+          gh release create "$TAG" --title "gpui-kit-grid ${TAG#v}" --verify-tag --latest \
+            --notes-file "$RUNNER_TEMP/notes.md" --generate-notes \
+            ${previous:+--notes-start-tag "$previous"}

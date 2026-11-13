@@ -1,0 +1,36 @@
+target/
+.DS_Store
+.vscode
+.idea/
+index.scip
+*.log
+node_modules/
+.claude/worktrees/
+/.scratch/
+.worktrees
+__pycache__/
+/profile.json
+# A contributor's own cargo settings, such as a local gpui-kit `[patch]`
+# (CONTRIBUTING.md, "A local gpui-kit checkout")
+/.cargo/config.local.toml
+# The maintainers' design notes: a link to custom-docs/design (the private
+# submodule), committed there only.
+/docs
+# Claude Code bookkeeping
+.claude/.cc-writes/
+.claude/settings.local.json
+# Personal Claude Code settings (permissions, the author's MCP servers)
+.claude/settings.json
+# Personal instructions for Claude Code (identity, local paths)
+/CLAUDE.local.md
+.claude/scheduled_tasks.lock
+# Linux runs in Docker: logs, screenshots, summaries
+/out/
+# Fonts of the trading examples, downloaded by script/fetch-example-fonts
+/crates/grid/examples/fonts/
+# Orbital elements of the orbit example, downloaded by script/fetch-orbit-data
+/crates/grid/examples/data/
+# The site's dependencies, build output and Astro's generated types
+/site/node_modules/
+/site/dist/
+/site/.astro/

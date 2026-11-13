@@ -1,0 +1,600 @@
+#!/usr/bin/env -S python3 -I
+"""Downloads the data of the `transit` example and compiles the part it
+shows into compact files in `crates/grid/examples/data/` (gitignored: the
+data is not committed).
+
+    python3 -I script/fetch-transit-data              # Munich: MVV's timetable
+    python3 -I script/fetch-transit-data --helsinki   # Helsinki: HSL's network
+    options: --refresh  download again although a feed is here (once)
+             --pin      refuse a feed other than the one pinned below
+
+**Munich** is MVV's GTFS feed "Soll-Fahrplandaten MVV-Gesamtnetz" (the
+scheduled timetable of the whole Munich network, about 19 MB zipped),
+published by Münchner Verkehrs- und Tarifverbund GmbH (MVV) on the City of
+Munich's open data portal (opendata.muenchen.de, dataset
+"soll-fahrplandaten-mvv-gesamtnetz-gtfs") under CC BY 4.0. The attribution
+names "Münchner Verkehrs- und Tarifverbund GmbH (MVV)", the date the data
+was retrieved and the feed version; the compiled files carry all three in
+their first lines, and the example shows them. CC BY allows sharing the
+compiled files, a transformation of the feed, with that attribution, so
+the web pages may serve them.
+
+**Helsinki** is HSL's GTFS feed (Helsinki Region Transport, about 77 MB
+zipped, republished every day) under CC BY 4.0, "© HSL <year>". Only its
+network is compiled, for the map and for the names of the stops the live
+vehicles report: the lines, every stop and one stop pattern for each line
+and direction, no trips. The vehicles themselves come live from HSL's
+high-frequency positioning (MQTT), not from this file.
+
+Each download is one request, never retried and never in a loop:
+
+- nothing is downloaded when the feed's zip is already here (`--refresh`
+  downloads it again, once);
+- a feed is kept only if it is a zip. A feed other than the one pinned
+  below (MVV replaces its feed at the same address every four to eight
+  weeks, HSL every day) is accepted, and the script says so with its
+  version and SHA-256; with `--pin` it is refused instead, as is a zip
+  here that is not the pinned one.
+
+It records when it downloaded a feed (`<feed>.json`), then compiles the
+feeds' files and their gzips, which the browser loads, unless they are
+newer than the zip and this script:
+
+- `mvv-transit.tsv`: the city network, the U-Bahn, the tram and the city
+  buses of Münchner Verkehrsgesellschaft (MVG), and the S-Bahn lines
+  (`S1`...`S20`);
+- `mvv-transit-regional.tsv`: the same and the regional trains (RB, RE) and
+  buses, the example's `regional` option;
+- `hsl-network.tsv`: Helsinki's network.
+
+What is compiled, `transit timetable 2`: tab-separated lines, UTF-8.
+
+- `transit-timetable	2`, then `source	<publisher>	<licence>	<url>
+  <feed version>	<retrieved, YYYY-MM-DD>	<first day>	<last day>` and
+  `zone	<Europe/Berlin or Europe/Helsinki>`;
+- `L	<mode>	<name>	<colour>	<text colour>	<id>`: a line, `U` (U-Bahn), `M`
+  (metro), `S` (S-Bahn), `C` (commuter train), `R` (regional train), `T`
+  (tram), `B` (bus), `X` (regional bus) or `F` (ferry); the colours are
+  GTFS `route_color` (hex, empty when the feed gives none or black); the
+  id is the GTFS `route_id` where a live feed names lines by it, else
+  empty;
+- `S	<name>	<latitude>	<longitude>	<id>`: a station, degrees times
+  100,000; the id is the GTFS `stop_id` where a live feed names stops by
+  it, else empty;
+- `C	<Mo..Su as 0/1>	<first day>	<last day>	<added days>	<removed days>`:
+  a service day calendar (`calendar.txt` and its exceptions in
+  `calendar_dates.txt`), days as YYYYMMDD, lists comma separated;
+- `P	<line>	<headsign>	<stations>	<times>	<platforms>`: a stop pattern,
+  the stations by index and, from the first departure on, each leg's
+  travel time in seconds, `+<dwell>` when the vehicle waits at the
+  station it reaches; the platforms (GTFS `platform_code`, shortened to
+  its number: `Gleis 2` is `2`) of each call, comma separated, or empty
+  when the feed names none;
+- `T	<pattern>	<calendar>	<first departures>`: the trips of a pattern on
+  a calendar, each by its first departure in seconds after noon minus 12
+  hours of the service day (past 24:00 for a trip after midnight), the
+  first one whole and the others as the difference to the one before.
+
+Lines, stations, calendars and patterns are numbered from 0 in file order;
+a trip's number is its place among all trips of the `T` lines. Version 1,
+which the example still reads, had no ids and no platforms.
+
+MVV's feed has no `shapes.txt` geometry and no `frequencies.txt`: vehicles
+are placed between stations by time.
+"""
+
+import collections
+import csv
+import datetime
+import gzip
+import hashlib
+import http.client
+import io
+import json
+import pathlib
+import re
+import sys
+import urllib.error
+import urllib.request
+import zipfile
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+DATA = ROOT / "crates" / "grid" / "examples" / "data"
+TIMEOUT = 300
+USER_AGENT = "gpui-kit-grid transit example"
+
+
+class Feed:
+    """A GTFS feed: where it comes from, the one pinned, and its files."""
+
+    def __init__(self, name, url, sha256, publisher, licence):
+        self.name = name
+        self.url = url
+        self.sha256 = sha256
+        self.publisher = publisher
+        self.licence = licence
+        self.zip = DATA / f"{name}-gtfs.zip"
+        self.record = DATA / f"{name}-gtfs.json"
+
+
+# The resource of the dataset "Soll-Fahrplandaten MVV-Gesamtnetz (GTFS)" on
+# opendata.muenchen.de, and the feed it served on 2026-11-07 (feed version
+# 20261102, valid 2026-11-01 to 2027-01-31).
+MVV = Feed(
+    "mvv",
+    "https://www.mvv-muenchen.de/fileadmin/mediapool/developer/opendata/gesamt_gtfs.zip",
+    "144a0e6e36a979b3c289fefd5d7fb449277a0ce9f859d17a0198d23be23f488a",
+    "Münchner Verkehrs- und Tarifverbund GmbH (MVV)",
+    "CC BY 4.0",
+)
+# HSL's GTFS feed, as linked from hsl.fi/en/hsl/open-data and Digitransit's
+# documentation, and the feed it served on 2026-11-07 (feed version
+# "2026-11-07 06:41:30", valid 2026-11-06 to 2027-01-04).
+HSL = Feed(
+    "hsl",
+    "https://infopalvelut.storage.hsldev.com/gtfs/hsl.zip",
+    "c54a69735ee90cd0c3a174a8ac50e1a9c30b24ea37aa75f5de10dcb39442ed3b",
+    "Helsinki Region Transport (HSL)",
+    "CC BY 4.0",
+)
+
+# MVG, the city's operator, and its route types.
+MVG = "swm-07"
+MODES_OF_MVG = {"1": "U", "0": "T", "3": "B"}
+S_BAHN = re.compile(r"S\d+")
+# Black is how the feed says "no colour" for every MVG line.
+NO_COLOUR = {"", "000000"}
+# The modes of the city file; the regional file adds `R` and `X`.
+CITY_MODES = set("USTB")
+# A platform code's number: `Gleis 2`, `U-Bahn Gleis 1 Ri Odeonsplatz`,
+# `Gleis 2/3`, `Bushalt 9 (...)`, `Pos. 7`.
+PLATFORM = re.compile(r"(?:Gleis|Bushalt|Pos\.|Bstg\.?|Steig)\s*([0-9]+[a-z]?(?:/[0-9]+[a-z]?)?)")
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as file:
+        for block in iter(lambda: file.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def feed_info(path):
+    with zipfile.ZipFile(path) as archive:
+        if "feed_info.txt" not in archive.namelist():
+            return {}
+        with archive.open("feed_info.txt") as file:
+            return next(csv.DictReader(io.TextIOWrapper(file, encoding="utf-8-sig")), {})
+
+
+def describe(info):
+    return (
+        f"version {info.get('feed_version') or '?'}, "
+        f"{info.get('feed_start_date') or '?'} to {info.get('feed_end_date') or '?'}"
+    )
+
+
+def download(feed, pin):
+    """One request for `feed`; the zip kept if it is one (and, with `pin`,
+    the pinned one). Never retries."""
+    request = urllib.request.Request(feed.url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+            status = response.status
+            data = response.read()
+            modified = response.headers.get("Last-Modified")
+    except urllib.error.HTTPError as error:
+        sys.exit(f"FAILED  {feed.url}: HTTP {error.code}, {error.reason}")
+    except (OSError, http.client.HTTPException) as error:
+        sys.exit(f"FAILED  {feed.url}: {error!r}; nothing kept, not retried")
+    if status != 200:
+        sys.exit(f"FAILED  {feed.url}: HTTP {status}")
+    DATA.mkdir(parents=True, exist_ok=True)
+    partial = feed.zip.with_name(feed.zip.name + ".part")
+    partial.write_bytes(data)
+    if not zipfile.is_zipfile(partial):
+        partial.unlink()
+        sys.exit(f"FAILED  {feed.url}: not a zip file; nothing kept")
+    digest = hashlib.sha256(data).hexdigest()
+    info = feed_info(partial)
+    if digest != feed.sha256:
+        if pin:
+            partial.unlink()
+            sys.exit(
+                f"REFUSED  {feed.url}: not the pinned feed ({describe(info)}, SHA-256 {digest}). "
+                "Run again without --pin to use it."
+            )
+        print(f"newer  {feed.url}: {describe(info)}, SHA-256 {digest} (pinned: {feed.sha256 or 'none'})")
+    partial.replace(feed.zip)
+    record = {
+        "url": feed.url,
+        "sha256": digest,
+        "bytes": len(data),
+        "feed_version": info.get("feed_version"),
+        "retrieved": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+        "last_modified": modified,
+    }
+    feed.record.write_text(json.dumps(record, indent=2) + "\n")
+    print(f"fetched  {feed.zip} ({len(data)} bytes, {describe(info)}, SHA-256 {digest})")
+
+
+def ensure(feed, refresh, pin):
+    """The feed's zip here: kept as it is, or downloaded once."""
+    if feed.zip.is_file() and not refresh:
+        digest = sha256(feed.zip)
+        if digest == feed.sha256:
+            print(f"up to date  {feed.zip} (the pinned feed)")
+        elif pin:
+            sys.exit(
+                f"REFUSED  {feed.zip}: not the pinned feed (SHA-256 {digest}); "
+                "run without --pin, or --refresh --pin to download the pinned one."
+            )
+        else:
+            print(f"kept  {feed.zip} ({describe(feed_info(feed.zip))}, SHA-256 {digest})")
+        return
+    download(feed, pin)
+
+
+def retrieved(feed):
+    if feed.record.is_file():
+        return json.loads(feed.record.read_text())["retrieved"]
+    modified = datetime.datetime.fromtimestamp(feed.zip.stat().st_mtime, datetime.timezone.utc)
+    return modified.strftime("%Y-%m-%d")
+
+
+def is_fresh(feed, outputs):
+    newest = max(feed.zip.stat().st_mtime, pathlib.Path(__file__).stat().st_mtime)
+    paths = [path for out in outputs for path in (out, gz_of(out))]
+    return all(path.is_file() for path in paths) and min(path.stat().st_mtime for path in paths) > newest
+
+
+def gz_of(path):
+    return path.with_name(path.name + ".gz")
+
+
+def rows(archive, name):
+    with archive.open(name) as file:
+        yield from csv.DictReader(io.TextIOWrapper(file, encoding="utf-8-sig"))
+
+
+def seconds(text):
+    hours, minutes, secs = text.strip().split(":")
+    return int(hours) * 3600 + int(minutes) * 60 + int(secs)
+
+
+def natural(name):
+    """A line's name as people sort them: S2 before S20."""
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", name)]
+
+
+def platform_of(stop):
+    match = PLATFORM.search(stop.get("platform_code") or "")
+    return match.group(1) if match else ""
+
+
+def colours(route):
+    colour = route.get("route_color", "").upper()
+    text = route.get("route_text_color", "").upper()
+    return ("", "") if colour in NO_COLOUR else (colour, text)
+
+
+def fill_times(times):
+    """Fills the empty times of non-timepoint stops linearly by position."""
+    known = [ix for ix, value in enumerate(times) if value is not None]
+    if not known:
+        return None
+    for ix in range(len(times)):
+        if times[ix] is None:
+            before = max((k for k in known if k < ix), default=None)
+            after = min((k for k in known if k > ix), default=None)
+            if before is None or after is None:
+                return None
+            share = (ix - before) / (after - before)
+            times[ix] = round(times[before] + share * (times[after] - times[before]))
+    return times
+
+
+def legs_of(calls):
+    """A trip's first departure and legs, `None` if its times do not
+    read."""
+    arrivals = fill_times([call[1] if call[1] is not None else call[2] for call in calls])
+    departures = fill_times([call[2] if call[2] is not None else call[1] for call in calls])
+    if arrivals is None or departures is None:
+        return None
+    legs = []
+    for ix in range(1, len(calls)):
+        travel = arrivals[ix] - departures[ix - 1]
+        dwell = departures[ix] - arrivals[ix] if ix + 1 < len(calls) else 0
+        if travel < 0 or dwell < 0:
+            return None
+        legs.append(f"{travel}+{dwell}" if dwell else str(travel))
+    return departures[0], legs
+
+
+class Output:
+    """One compiled file: its lines, stations, calendars, patterns and
+    trips, numbered as they are first used."""
+
+    def __init__(self, path, feed, info, retrieved, zone):
+        self.path = path
+        self.header = [
+            "transit-timetable\t2",
+            "\t".join([
+                "source", feed.publisher, feed.licence, feed.url, info.get("feed_version", ""),
+                retrieved, info.get("feed_start_date", ""), info.get("feed_end_date", ""),
+            ]),
+            f"zone\t{zone}",
+        ]
+        self.lines = []
+        self.stations = {}
+        self.calendars = {}
+        self.patterns = {}
+        self.groups = collections.defaultdict(list)
+
+    def station(self, key):
+        return self.stations.setdefault(key, len(self.stations))
+
+    def pattern(self, line, headsign, stations, legs, platforms):
+        key = (line, headsign, tuple(self.station(s) for s in stations), tuple(legs), tuple(platforms))
+        return self.patterns.setdefault(key, len(self.patterns))
+
+    def trip(self, pattern, service, start):
+        calendar = self.calendars.setdefault(service, len(self.calendars))
+        self.groups[(pattern, calendar)].append(start)
+
+    def write(self, line_rows, station_rows, calendar_rows):
+        out = io.StringIO()
+        for line in self.header:
+            out.write(line + "\n")
+        for fields in line_rows:
+            out.write("L\t" + "\t".join(fields) + "\n")
+        for key in self.stations:
+            out.write("S\t" + "\t".join(station_rows(key)) + "\n")
+        for service in self.calendars:
+            out.write("C\t" + "\t".join(calendar_rows(service)) + "\n")
+        for line, headsign, stations, legs, platforms in self.patterns:
+            platforms = ",".join(platforms) if any(platforms) else ""
+            out.write(f"P\t{line}\t{headsign}\t{','.join(map(str, stations))}\t{','.join(legs)}\t{platforms}\n")
+        trips = 0
+        for (pattern, calendar), starts in sorted(self.groups.items()):
+            starts.sort()
+            deltas = [starts[0]] + [b - a for a, b in zip(starts, starts[1:])]
+            out.write(f"T\t{pattern}\t{calendar}\t{','.join(map(str, deltas))}\n")
+            trips += len(starts)
+        text = out.getvalue().encode("utf-8")
+        self.path.write_bytes(text)
+        packed = gzip.compress(text, compresslevel=9, mtime=0)
+        gz_of(self.path).write_bytes(packed)
+        return trips, len(text), len(packed)
+
+
+def mvv_mode(route):
+    """The example's mode of an MVV route; `R` and `X` are regional."""
+    if S_BAHN.fullmatch(route["route_short_name"]) and route["agency_id"] != MVG:
+        return "S"
+    if route["agency_id"] == MVG:
+        return MODES_OF_MVG.get(route["route_type"])
+    return {"2": "R", "3": "X"}.get(route["route_type"])
+
+
+def compile_mvv(day):
+    city = DATA / "mvv-transit.tsv"
+    regional = DATA / "mvv-transit-regional.tsv"
+    if is_fresh(MVV, [city, regional]):
+        print(f"up to date  {city}, {regional}")
+        return
+    with zipfile.ZipFile(MVV.zip) as archive:
+        info = next(rows(archive, "feed_info.txt"))
+        agencies = {row["agency_id"]: row for row in rows(archive, "agency.txt")}
+        zones = {row["agency_timezone"] for row in agencies.values()}
+        if zones != {"Europe/Berlin"}:
+            sys.exit(f"FAILED  agencies in {sorted(zones)}: the example knows Europe/Berlin only")
+        if "frequencies.txt" in archive.namelist():
+            sys.exit("FAILED  the feed has frequencies.txt, which this script does not expand")
+        routes = {}
+        for row in rows(archive, "routes.txt"):
+            mode = mvv_mode(row)
+            if mode is not None:
+                routes[row["route_id"]] = (mode, row)
+        trips = {row["trip_id"]: row for row in rows(archive, "trips.txt") if row["route_id"] in routes}
+        stops = {row["stop_id"]: row for row in rows(archive, "stops.txt")}
+        stop_times = collections.defaultdict(list)
+        empty = 0
+        for row in rows(archive, "stop_times.txt"):
+            if row["trip_id"] not in trips:
+                continue
+            arrival = row["arrival_time"].strip()
+            departure = row["departure_time"].strip()
+            empty += not arrival or not departure
+            stop_times[row["trip_id"]].append((
+                int(row["stop_sequence"]),
+                seconds(arrival) if arrival else None,
+                seconds(departure) if departure else None,
+                row["stop_id"],
+            ))
+        calendars = {row["service_id"]: row for row in rows(archive, "calendar.txt")}
+        exceptions = collections.defaultdict(lambda: ([], []))
+        for row in rows(archive, "calendar_dates.txt"):
+            added, removed = exceptions[row["service_id"]]
+            (added if row["exception_type"] == "1" else removed).append(row["date"])
+
+    line_keys = sorted(
+        {(mode, row["route_short_name"], *colours(row)) for mode, row in routes.values()},
+        key=lambda key: ("USRTBX".index(key[0]), natural(key[1])),
+    )
+
+    def station_rows(station):
+        stop = stops[station]
+        return [
+            stop["stop_name"].strip(),
+            str(round(float(stop["stop_lat"]) * 1e5)),
+            str(round(float(stop["stop_lon"]) * 1e5)),
+            "",
+        ]
+
+    def calendar_rows(service):
+        calendar = calendars.get(service)
+        if calendar:
+            days = "".join(calendar[day] for day in (
+                "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"))
+            first, last = calendar["start_date"], calendar["end_date"]
+        else:
+            days, first, last = "0000000", "", ""
+        added, removed = exceptions.get(service, ([], []))
+        return [days, first, last, ",".join(sorted(added)), ",".join(sorted(removed))]
+
+    for path, modes in ((city, CITY_MODES), (regional, CITY_MODES | {"R", "X"})):
+        out = Output(path, MVV, info, day, "Europe/Berlin")
+        kept = [key for key in line_keys if key[0] in modes]
+        line_ix = {key: ix for ix, key in enumerate(kept)}
+        skipped = 0
+        for trip_id, trip in trips.items():
+            mode, route = routes[trip["route_id"]]
+            if mode not in modes:
+                continue
+            calls = sorted(stop_times.get(trip_id, []))
+            timed = legs_of(calls) if len(calls) >= 2 else None
+            if timed is None:
+                skipped += 1
+                continue
+            start, legs = timed
+            line = line_ix[(mode, route["route_short_name"], *colours(route))]
+            stations = [stops[call[3]]["parent_station"] or call[3] for call in calls]
+            platforms = [platform_of(stops[call[3]]) for call in calls]
+            pattern = out.pattern(line, trip["trip_headsign"].strip(), stations, legs, platforms)
+            out.trip(pattern, trip["service_id"], start)
+        trip_count, size, packed = out.write(
+            ([mode, name, colour, text, ""] for mode, name, colour, text in kept),
+            station_rows,
+            calendar_rows,
+        )
+        counts = collections.Counter(key[0] for key in kept)
+        print(
+            f"compiled  {path}: {len(kept)} lines ({dict(counts)}), {len(out.stations)} stations, "
+            f"{len(out.calendars)} calendars, {len(out.patterns)} patterns, {trip_count} trips"
+            f"{f', {skipped} skipped' if skipped else ''}{f', {empty} empty times filled' if empty else ''}"
+        )
+        print(f"  {size} bytes, {packed} gzip ({gz_of(path).name})")
+
+
+def hsl_mode(route):
+    """The example's mode of an HSL route (GTFS and HSL's extended types)."""
+    kind = route["route_type"]
+    if kind == "0":
+        return "T"
+    if kind == "1":
+        return "M"
+    if kind in ("2", "109"):
+        return "C"
+    if kind in ("4", "1000", "1200"):
+        return "F"
+    if kind == "3" or kind.startswith("7"):
+        return "B"
+    return None
+
+
+def compile_hsl(day):
+    path = DATA / "hsl-network.tsv"
+    if is_fresh(HSL, [path]):
+        print(f"up to date  {path}")
+        return
+    with zipfile.ZipFile(HSL.zip) as archive:
+        info = feed_info(HSL.zip)
+        routes = {}
+        for row in rows(archive, "routes.txt"):
+            mode = hsl_mode(row)
+            if mode is not None:
+                routes[row["route_id"]] = (mode, row)
+        # One trip of each line and direction: one of its most common stop
+        # sequence (shape), so a short turn does not stand for the line.
+        shapes = collections.Counter()
+        first_trip = {}
+        headsigns = {}
+        for row in rows(archive, "trips.txt"):
+            if row["route_id"] not in routes:
+                continue
+            key = (row["route_id"], row.get("direction_id", ""), row.get("shape_id", ""))
+            shapes[key] += 1
+            first_trip.setdefault(key, row["trip_id"])
+            headsigns.setdefault(key, row.get("trip_headsign", "").strip())
+        chosen = {}
+        for (route_id, direction, shape), count in shapes.items():
+            best = chosen.get((route_id, direction))
+            if best is None or count > best[1]:
+                chosen[(route_id, direction)] = ((route_id, direction, shape), count)
+        wanted = {first_trip[key]: key for key, _ in chosen.values()}
+        stops = {row["stop_id"]: row for row in rows(archive, "stops.txt")}
+        stop_times = collections.defaultdict(list)
+        for row in rows(archive, "stop_times.txt"):
+            if row["trip_id"] not in wanted:
+                continue
+            arrival = row["arrival_time"].strip()
+            departure = row["departure_time"].strip()
+            stop_times[row["trip_id"]].append((
+                int(row["stop_sequence"]),
+                seconds(arrival) if arrival else None,
+                seconds(departure) if departure else None,
+                row["stop_id"],
+            ))
+
+    line_keys = sorted(
+        {(mode, row["route_short_name"].strip() or row["route_id"], *colours(row), route_id)
+         for route_id, (mode, row) in routes.items()},
+        key=lambda key: ("MCTBF".index(key[0]), natural(key[1]), key[4]),
+    )
+    line_ix = {key[4]: ix for ix, key in enumerate(line_keys)}
+    out = Output(path, HSL, info, day, "Europe/Helsinki")
+    for trip_id, key in sorted(wanted.items(), key=lambda item: item[1]):
+        calls = sorted(stop_times.get(trip_id, []))
+        timed = legs_of(calls) if len(calls) >= 2 else None
+        if timed is None:
+            continue
+        _, legs = timed
+        stations = [call[3] for call in calls]
+        platforms = [stops[call[3]].get("platform_code", "").strip() for call in calls]
+        out.pattern(line_ix[key[0]], headsigns[key], stations, legs, platforms)
+    # Every other stop too, unlinked: a vehicle on a variant of its line
+    # names stops the chosen patterns do not call at.
+    for stop_id, stop in stops.items():
+        if stop.get("location_type", "0") in ("", "0") and stop.get("stop_lat"):
+            out.station(stop_id)
+
+    def station_rows(stop_id):
+        stop = stops[stop_id]
+        return [
+            stop["stop_name"].strip(),
+            str(round(float(stop["stop_lat"]) * 1e5)),
+            str(round(float(stop["stop_lon"]) * 1e5)),
+            stop_id,
+        ]
+
+    _, size, packed = out.write(
+        ([mode, name, colour, text, route_id] for mode, name, colour, text, route_id in line_keys),
+        station_rows,
+        lambda service: [],
+    )
+    counts = collections.Counter(key[0] for key in line_keys)
+    print(
+        f"compiled  {path}: {len(line_keys)} lines ({dict(counts)}), {len(out.stations)} stops, "
+        f"{len(out.patterns)} patterns"
+    )
+    print(f"  {size} bytes, {packed} gzip ({gz_of(path).name})")
+
+
+def main():
+    flags = {"--helsinki", "--refresh", "--pin"}
+    args = sys.argv[1:]
+    unknown = [arg for arg in args if arg not in flags]
+    if unknown:
+        sys.exit(f"usage: {sys.argv[0]} [--helsinki] [--refresh] [--pin]")
+    feed = HSL if "--helsinki" in args else MVV
+    ensure(feed, "--refresh" in args, "--pin" in args)
+    day = retrieved(feed)
+    if feed is HSL:
+        compile_hsl(day)
+    else:
+        compile_mvv(day)
+
+
+if __name__ == "__main__":
+    main()

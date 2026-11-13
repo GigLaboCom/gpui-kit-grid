@@ -1,0 +1,275 @@
+[package]
+name = "gpui-kit-grid"
+description = "A live-updating data grid for gpui-kit applications."
+version = "1.0.0"
+keywords = ["gpui", "grid", "datagrid", "table", "live"]
+categories = ["gui"]
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+
+[features]
+# Headless UI test harness and headless Metal rendering for the spike benchmark.
+test-support = ["gpui-kit/test-support"]
+# `CellValue::Decimal` and `OwnedValue::Decimal`: exact money values with
+# `rust_decimal`, as gpui-kit's `decimal` feature.
+decimal = ["dep:rust_decimal"]
+# `#[derive(GridColumns)]` (crate `gpui-kit-grid-macros`), off by default as in
+# serde, so the crate builds without a proc-macro.
+derive = ["dep:gpui-kit-grid-macros"]
+
+[dependencies]
+async-channel.workspace = true
+chrono.workspace = true
+gpui-kit.workspace = true
+gpui-kit-grid-macros = { workspace = true, optional = true }
+imbl.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+rustc-hash.workspace = true
+rust-i18n.workspace = true
+rust_decimal = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+web-time.workspace = true
+
+[dev-dependencies]
+fastrand.workspace = true
+# The cookbook example's WebSocket recipe reads the quotes gateway's feed.
+gpui-kit-grid-feed.workspace = true
+# The ships example's native transport: gzip, TLS, the root certificates and
+# the WebSocket (`examples/ships/native.rs`).
+flate2.workspace = true
+rustc-hash.workspace = true
+rustls.workspace = true
+rustls-native-certs.workspace = true
+sgp4.workspace = true
+smol.workspace = true
+tungstenite.workspace = true
+# The `wiki` example's native client of Wikimedia's EventStreams (SSE over
+# HTTPS): rustls with the webpki roots, no gzip. The browser build uses
+# the browser's `EventSource` instead; the library never depends on it.
+ureq = { version = "3.4.2", default-features = false, features = ["rustls"] }
+# The `perf` example's process list (CPU, memory, disk, users) and the
+# property lists `ioreg` prints for the GPU (`examples/perf/gpu.rs`). The
+# library never depends on them.
+plist = { version = "1.7", default-features = false }
+sysinfo = { version = "0.38", default-features = false, features = ["system", "user"] }
+
+# The `perf` example's threads, memory footprint and memory pressure on
+# macOS (`examples/perf/task.rs`).
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+libc = "0.2"
+
+[lints]
+workspace = true
+
+[[example]]
+name = "spike_bench"
+required-features = ["test-support"]
+
+# `test = true`: `cargo test` runs the unit tests of the status bar and the
+# toolbar's choices, and with `test-support` a headless run of the toolbar.
+[[example]]
+name = "blotter"
+path = "examples/blotter/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the model.
+[[example]]
+name = "orders"
+path = "examples/orders/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the simulator and the
+# command line.
+[[example]]
+name = "desk"
+path = "examples/desk/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the exchange, the
+# ladder's clicks and the commands.
+[[example]]
+name = "ladder"
+path = "examples/ladder/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the newsroom, the
+# chips and the keys.
+[[example]]
+name = "wire"
+path = "examples/wire/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the account, the price
+# colours, the chart's ranges and the keys.
+[[example]]
+name = "broker"
+path = "examples/broker/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the simulator, the
+# grids and the keys, and with `test-support` the headless store tests.
+[[example]]
+name = "ops"
+path = "examples/ops/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the sky model, the
+# producer and the keys, and with `test-support` the headless store tests.
+[[example]]
+name = "orbit"
+path = "examples/orbit/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the timetable, Munich's
+# clock, the schedule engine, the rows and the keys, and with
+# `test-support` the headless store tests.
+[[example]]
+name = "transit"
+path = "examples/transit/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the stream parser, the
+# edits, the aggregation windows, the reconnect timing and the keys.
+[[example]]
+name = "wiki"
+path = "examples/wiki/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the MQTT client, the AIS
+# messages, the fleet, the backoff, the replay and the keys.
+[[example]]
+name = "ships"
+path = "examples/ships/main.rs"
+test = true
+
+# `test = true`: `cargo test` runs the unit tests of the units, the
+# `ioreg` and DRM `fdinfo` parsers, the GPU time deltas, the change
+# thresholds and the keys.
+[[example]]
+name = "perf"
+path = "examples/perf/main.rs"
+test = true
+
+[[test]]
+name = "ui"
+required-features = ["test-support"]
+
+[[test]]
+name = "store"
+required-features = ["test-support"]
+
+[[test]]
+name = "columns"
+required-features = ["test-support"]
+
+[[test]]
+name = "sort"
+required-features = ["test-support"]
+
+[[test]]
+name = "layout"
+required-features = ["test-support"]
+
+[[test]]
+name = "dock"
+required-features = ["test-support"]
+
+[[test]]
+name = "selection"
+required-features = ["test-support"]
+
+[[test]]
+name = "copy"
+required-features = ["test-support"]
+
+[[test]]
+name = "menu"
+required-features = ["test-support"]
+
+[[test]]
+name = "blotter_flow"
+required-features = ["test-support"]
+
+[[test]]
+name = "orders_flow"
+required-features = ["test-support"]
+
+[[test]]
+name = "click"
+required-features = ["test-support"]
+
+[[test]]
+name = "keys"
+required-features = ["test-support"]
+
+[[test]]
+name = "groups"
+required-features = ["test-support"]
+
+[[test]]
+name = "engine_tree"
+required-features = ["test-support"]
+
+[[test]]
+name = "engine_groups"
+required-features = ["test-support"]
+
+[[test]]
+name = "group_panel"
+required-features = ["test-support"]
+
+[[test]]
+name = "tree"
+required-features = ["test-support"]
+
+[[test]]
+name = "totals"
+required-features = ["test-support"]
+
+[[test]]
+name = "live"
+required-features = ["test-support"]
+
+[[test]]
+name = "export"
+required-features = ["test-support"]
+
+[[test]]
+name = "handle"
+required-features = ["test-support"]
+
+[[test]]
+name = "chooser"
+required-features = ["test-support"]
+
+[[test]]
+name = "edit"
+required-features = ["test-support"]
+
+[[test]]
+name = "live_edit"
+required-features = ["test-support"]
+
+[[test]]
+name = "drag"
+required-features = ["test-support"]
+
+[[test]]
+name = "widgets"
+required-features = ["test-support"]
+
+[[test]]
+name = "images"
+required-features = ["test-support"]
+
+# The layout test inside also needs `test-support`.
+[[test]]
+name = "derive"
+required-features = ["derive"]

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#
+# Points git at the repository's hooks in .githooks/ (pre-commit: secrets
+# and private data; commit-msg: no agent attribution; pre-push: both again
+# for what leaves the machine), and creates the private pattern list they
+# read, if it is missing. Run once after cloning; worktrees share both. The
+# custom-docs submodule, when checked out, gets the same hooks: they read
+# its own pattern list and this repository's.
+#
+#   script/install-hooks
+
+set -euo pipefail
+
+root="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+common="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)"
+
+git -C "$root" config core.hooksPath .githooks
+echo "Git hooks: .githooks/ (pre-commit, commit-msg, pre-push)"
+
+# The optional custom-docs submodule: hooks from the superproject's folder.
+if git -C "$root/custom-docs" rev-parse --show-superproject-working-tree 2>/dev/null | grep -q .; then
+  git -C "$root/custom-docs" config core.hooksPath ../.githooks
+  echo "Git hooks: custom-docs/ uses ../.githooks"
+  # The design notes, at the path the rules name.
+  if [[ -d "$root/custom-docs/design" && ! -e "$root/docs" ]]; then
+    ln -s custom-docs/design "$root/docs"
+    echo "Linked docs/ to custom-docs/design"
+  fi
+fi
+
+list="$common/info/privacy-patterns"
+if [[ ! -f "$list" ]]; then
+  mkdir -p "$common/info"
+  printf '%s\n' \
+    '# Private patterns the hooks refuse in added lines, commit messages and' \
+    '# the author: one extended regular expression per line, matched without' \
+    '# case. This file lives inside .git and is never committed. Add your' \
+    '# work domain, other addresses and names that must not be published.' \
+    >"$list"
+  echo "Created $list: add your own patterns to it."
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks: $(command -v gitleaks)"
+elif "$root/target/tools/bin/gitleaks" version >/dev/null 2>&1; then
+  echo "gitleaks: $root/target/tools/bin/gitleaks"
+else
+  echo "gitleaks is not installed, and the hooks refuse commits and pushes until it is:"
+  echo "  brew install gitleaks"
+  echo "  or a release from https://github.com/gitleaks/gitleaks/releases (check its"
+  echo "  checksums) as target/tools/bin/gitleaks"
+fi

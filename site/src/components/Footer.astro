@@ -1,0 +1,34 @@
+---
+// Starlight's footer (pagination) and a line about the project under it.
+import Default from '@astrojs/starlight/components/Footer.astro';
+import { withBase } from '../lib/links';
+---
+
+<Default><slot /></Default>
+<p class="project">
+	Apache-2.0, built on <a href="https://gpui-kit.com">gpui-kit</a>.{' '}
+	<a href="https://github.com/GigLaboCom/gpui-kit-grid">Repository</a>{' '}
+	<span aria-hidden="true">·</span>{' '}
+	<a href={withBase('/sponsor/')}>Sponsor</a>{' '}
+	<span aria-hidden="true">·</span>{' '}
+	<a href={withBase('/privacy/')}>Privacy</a>{' '}
+	<span aria-hidden="true">·</span>{' '}
+	<a href={withBase('/licenses/')}>Licenses</a>
+</p>
+
+<style>
+	.project {
+		margin-top: 3rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--sl-color-hairline-light);
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-xs);
+		text-align: center;
+	}
+	.project a {
+		color: var(--sl-color-gray-2);
+	}
+	.project a:hover {
+		color: var(--sl-color-text-accent);
+	}
+</style>

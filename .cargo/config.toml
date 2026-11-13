@@ -1,0 +1,7 @@
+# A contributor's own settings, never committed (`.gitignore`): for example a
+# `[patch]` that builds against a local gpui-kit checkout (CONTRIBUTING.md,
+# "A local gpui-kit checkout"). Skipped when the file does not exist.
+include = [{ path = "config.local.toml", optional = true }]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/STACK:8000000"]

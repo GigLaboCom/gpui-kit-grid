@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+#
+# Cuts a release of the site: the documentation pages, the live demos and the
+# API reference (.github/workflows/site.yml). The site has a release line of
+# its own, tags `site-vX.Y.Z`; `vX.Y.Z` stays for the crate. Pushing such a
+# tag makes the workflow publish the image
+# ghcr.io/giglabocom/gpui-kit-grid-site:{X.Y.Z, X.Y, X from 1.0, latest}, deploy
+# the site to Cloudflare and open the GitHub release.
+#
+# Only what reaches the site counts: the paths the workflow builds on (its
+# `pull_request: paths:`, read from the file). With no commit there since the
+# last site tag there is nothing to release, and no tag is made.
+#
+#   script/release-site                 # the site's changes since its last release
+#   script/release-site 0.2.0           # tag site-v0.2.0 at <remote>/main, annotated, not pushed
+#   script/release-site 0.2.0 --push    # and push it: the release starts
+#   script/release-site --notes <tag>   # the release notes of a tag (the workflow uses this)
+#
+# REMOTE (default: origin) is the repository on GitHub.
+
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+workflow="$root/.github/workflows/site.yml"
+remote="${REMOTE:-origin}"
+prefix="site-v"
+
+fail() {
+  echo "release-site: $*" >&2
+  exit 1
+}
+
+# The workflow's pull_request paths, as git pathspecs.
+specs=()
+while IFS= read -r path; do
+  specs+=(":(glob)$path")
+done < <(awk '
+  /^  pull_request:/ { pr = 1; next }
+  pr && /^    paths:/ { paths = 1; next }
+  paths && /^      - / { p = $0; sub(/^      - /, "", p); gsub(/["'\'']/, "", p); print p; next }
+  paths { exit }
+  pr && /^  [^ ]/ { exit }
+' "$workflow")
+[[ ${#specs[@]} -gt 0 ]] || fail "no pull_request paths in $workflow"
+
+# The last site tag reachable from a commit, if any.
+last_tag() {
+  git describe --tags --abbrev=0 --match "${prefix}[0-9]*" "$1" 2>/dev/null || true
+}
+# The site's commits in `$1` (a range or a commit), one Markdown line each.
+changes() {
+  git log --no-merges --format='- %s (%h)' "$1" -- "${specs[@]}"
+}
+
+if [[ "${1:-}" == --notes ]]; then
+  tag="${2:?usage: script/release-site --notes <tag>}"
+  git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null || fail "no tag $tag"
+  prev="$(last_tag "$tag^")"
+  if [[ -n "$prev" ]]; then
+    echo "### Changes to the site since ${prev#"$prefix"}"
+    echo
+    changes "$prev..$tag"
+    if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
+      echo
+      echo "**Full diff**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$tag"
+    fi
+  else
+    echo "The site's first release."
+  fi
+  exit 0
+fi
+
+version="${1:-}"
+push=0
+[[ "${2:-}" == --push ]] && push=1
+[[ $# -le 2 && ( -z "${2:-}" || $push -eq 1 ) ]] || fail "usage: script/release-site [<X.Y.Z> [--push]] | --notes <tag>"
+
+git fetch --quiet --tags "$remote" main || fail "cannot fetch main from $remote"
+target="$(git rev-parse --verify "$remote/main^{commit}")"
+prev="$(last_tag "$target")"
+if [[ -n "$prev" ]]; then
+  range="$prev..$target"
+  log="$(changes "$range")"
+  [[ -n "$log" ]] || fail "nothing reached the site since $prev: no release"
+  echo "The site's changes since $prev ($(git rev-parse --short "$target") on $remote/main):"
+else
+  range="$target"
+  log="$(changes "$range")"
+  echo "No site release yet; this is the first ($(git rev-parse --short "$target") on $remote/main)."
+fi
+echo "$log" | head -40
+[[ $(echo "$log" | wc -l) -le 40 ]] || echo "… and $(($(echo "$log" | wc -l) - 40)) more"
+
+current="${prev#"$prefix"}"
+if [[ -z "$version" ]]; then
+  if [[ -n "$prev" ]]; then
+    IFS=. read -r major minor patch <<<"$current"
+    echo
+    echo "Next: script/release-site $major.$minor.$((patch + 1))   (fixes)"
+    echo "      script/release-site $major.$((minor + 1)).0   (new pages, demos or behavior)"
+  else
+    echo
+    echo "Next: script/release-site 0.1.0"
+  fi
+  exit 0
+fi
+
+[[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail "not a version X.Y.Z: $version"
+tag="$prefix$version"
+git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null && fail "$tag exists"
+if [[ -n "$prev" ]]; then
+  [[ "$(printf '%s\n%s\n' "$current" "$version" | sort -V | tail -1)" == "$version" && "$version" != "$current" ]] \
+    || fail "$version is not after $current"
+fi
+
+git tag -a "$tag" -m "Site $version" -m "$log" "$target"
+echo
+echo "Tagged $tag at $(git rev-parse --short "$target")."
+if [[ $push -eq 1 ]]; then
+  git push "$remote" "refs/tags/$tag"
+  echo "Pushed: the Site workflow releases it."
+else
+  echo "Push it to release: git push $remote $tag"
+fi

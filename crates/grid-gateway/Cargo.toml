@@ -1,0 +1,37 @@
+[package]
+name = "gpui-kit-grid-gateway"
+description = "The live quotes gateway of gpui-kit-grid's web example: the trading simulator over WebSocket."
+version = "1.0.0"
+keywords = ["gpui", "grid", "quotes", "websocket"]
+categories = ["network-programming"]
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[[bin]]
+name = "grid-gateway"
+path = "src/main.rs"
+
+[dependencies]
+# `trading/market.rs` takes the first-load signal as an `async_channel::Sender`.
+async-channel.workspace = true
+# The simulator's random walk (`trading/market.rs`).
+fastrand.workspace = true
+# `trading/rows.rs` implements the grid's row traits; the gateway never
+# opens a window.
+gpui-kit-grid.workspace = true
+gpui-kit-grid-feed.workspace = true
+parking_lot.workspace = true
+tungstenite.workspace = true
+web-time.workspace = true
+
+[lints]
+workspace = true
+
+# Used by the trading module's files, which `src/trading.rs` includes from
+# `crates/grid/examples/trading/` by path, where cargo-machete does not look.
+[package.metadata.cargo-machete]
+ignored = ["async-channel", "fastrand", "gpui-kit-grid"]

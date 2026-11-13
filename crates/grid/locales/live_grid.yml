@@ -1,0 +1,313 @@
+_version: 2
+live_grid:
+  menu.copy:
+    en: Copy
+    zh-CN: 复制
+    zh-HK: 複製
+  menu.copy_all:
+    en: Copy all
+    zh-CN: 复制全部
+    zh-HK: 複製全部
+  menu.sort:
+    en: Sort
+    zh-CN: 排序
+    zh-HK: 排序
+  menu.sort_ascending:
+    en: Sort ascending
+    zh-CN: 升序排序
+    zh-HK: 升序排序
+  menu.sort_descending:
+    en: Sort descending
+    zh-CN: 降序排序
+    zh-HK: 降序排序
+  menu.clear_sort:
+    en: Clear sort
+    zh-CN: 清除排序
+    zh-HK: 清除排序
+  menu.clear_all_sorting:
+    en: Clear all sorting
+    zh-CN: 清除所有排序
+    zh-HK: 清除所有排序
+  menu.column:
+    en: Column
+    zh-CN: 列
+    zh-HK: 欄
+  menu.autofit_column:
+    en: Autofit column
+    zh-CN: 自动调整列宽
+    zh-HK: 自動調整欄寬
+  menu.autofit_columns:
+    en: Autofit all columns
+    zh-CN: 自动调整所有列宽
+    zh-HK: 自動調整所有欄寬
+  menu.hide_column:
+    en: Hide column
+    zh-CN: 隐藏列
+    zh-HK: 隱藏欄
+  menu.show_all_columns:
+    en: Show all columns
+    zh-CN: 显示所有列
+    zh-HK: 顯示所有欄
+  menu.choose_columns:
+    en: Choose columns…
+    zh-CN: 选择列…
+    zh-HK: 選擇欄…
+  menu.freeze_left:
+    en: Freeze left
+    zh-CN: 冻结到左侧
+    zh-HK: 凍結至左側
+  menu.freeze_right:
+    en: Freeze right
+    zh-CN: 冻结到右侧
+    zh-HK: 凍結至右側
+  menu.unfreeze:
+    en: Unfreeze
+    zh-CN: 取消冻结
+    zh-HK: 取消凍結
+  menu.reset_columns:
+    en: Reset columns
+    zh-CN: 重置列布局
+    zh-HK: 重置欄佈局
+  sort.ascending:
+    en: Sorted ascending
+    zh-CN: 已按升序排序
+    zh-HK: 已按升序排序
+  sort.descending:
+    en: Sorted descending
+    zh-CN: 已按降序排序
+    zh-HK: 已按降序排序
+  sort.ascending_priority:
+    en: "Sorted ascending, priority %{priority}"
+    zh-CN: "已按升序排序，优先级 %{priority}"
+    zh-HK: "已按升序排序，優先級 %{priority}"
+  sort.descending_priority:
+    en: "Sorted descending, priority %{priority}"
+    zh-CN: "已按降序排序，优先级 %{priority}"
+    zh-HK: "已按降序排序，優先級 %{priority}"
+  progress.loading:
+    en: Loading…
+    zh-CN: 加载中…
+    zh-HK: 載入中…
+  # The group panel and the grouping commands.
+  menu.group_by:
+    en: Group by this column
+    zh-CN: 按此列分组
+    zh-HK: 按此欄分組
+  menu.ungroup:
+    en: Ungroup
+    zh-CN: 取消分组
+    zh-HK: 取消分組
+  menu.clear_grouping:
+    en: Ungroup all
+    zh-CN: 全部取消分组
+    zh-HK: 全部取消分組
+  menu.move_left:
+    en: Move left
+    zh-CN: 左移
+    zh-HK: 左移
+  menu.move_right:
+    en: Move right
+    zh-CN: 右移
+    zh-HK: 右移
+  group_panel.label:
+    en: Grouping
+    zh-CN: 分组
+    zh-HK: 分組
+  group_panel.hint:
+    en: Drag a column header here to group by it
+    zh-CN: 将列标题拖到此处以按该列分组
+    zh-HK: 將欄標題拖到此處以按該欄分組
+  group_panel.tree:
+    en: Grouping is off in the tree view
+    zh-CN: 树形视图中不可分组
+    zh-HK: 樹狀檢視中不可分組
+  group_panel.chip:
+    en: "%{title}, %{direction}"
+    zh-CN: "%{title}，%{direction}"
+    zh-HK: "%{title}，%{direction}"
+  group_panel.remove:
+    en: "Remove grouping by %{title}"
+    zh-CN: "取消按 %{title} 分组"
+    zh-HK: "取消按 %{title} 分組"
+  group.caption:
+    en: "%{title}: %{value} (%{count})"
+    zh-CN: "%{title}：%{value}（%{count}）"
+    zh-HK: "%{title}：%{value}（%{count}）"
+  group.blank:
+    en: (Blank)
+    zh-CN: （空白）
+    zh-HK: （空白）
+  group.true:
+    en: "Yes"
+    zh-CN: 是
+    zh-HK: 是
+  group.false:
+    en: "No"
+    zh-CN: 否
+    zh-HK: 否
+  menu.expand:
+    en: Expand
+    zh-CN: 展开
+    zh-HK: 展開
+  menu.collapse:
+    en: Collapse
+    zh-CN: 折叠
+    zh-HK: 摺疊
+  menu.expand_all:
+    en: Expand all
+    zh-CN: 全部展开
+    zh-HK: 全部展開
+  menu.collapse_all:
+    en: Collapse all
+    zh-CN: 全部折叠
+    zh-HK: 全部摺疊
+  menu.captions_only:
+    en: Captions only
+    zh-CN: 仅显示分组标题
+    zh-HK: 僅顯示分組標題
+  aggregate.sum:
+    en: Sum
+    zh-CN: 求和
+    zh-HK: 求和
+  aggregate.avg:
+    en: Average
+    zh-CN: 平均值
+    zh-HK: 平均值
+  aggregate.min:
+    en: Min
+    zh-CN: 最小值
+    zh-HK: 最小值
+  aggregate.max:
+    en: Max
+    zh-CN: 最大值
+    zh-HK: 最大值
+  aggregate.count:
+    en: Count
+    zh-CN: 计数
+    zh-HK: 計數
+  aggregate.tooltip:
+    en: "%{name}: %{value}"
+    zh-CN: "%{name}：%{value}"
+    zh-HK: "%{name}：%{value}"
+  totals.label:
+    en: Total
+    zh-CN: 合计
+    zh-HK: 合計
+  a11y.up:
+    en: rising
+    zh-CN: 上涨
+    zh-HK: 上漲
+  a11y.down:
+    en: falling
+    zh-CN: 下跌
+    zh-HK: 下跌
+  a11y.expanded:
+    en: Expanded
+    zh-CN: 已展开
+    zh-HK: 已展開
+  a11y.collapsed:
+    en: Collapsed
+    zh-CN: 已折叠
+    zh-HK: 已摺疊
+  edit.not_a_number:
+    en: Enter a number
+    zh-CN: 请输入数字
+    zh-HK: 請輸入數字
+  edit.not_a_whole_number:
+    en: Enter a whole number
+    zh-CN: 请输入整数
+    zh-HK: 請輸入整數
+  edit.too_many_decimals:
+    en: Use at most %{scale} decimals
+    zh-CN: 最多保留 %{scale} 位小数
+    zh-HK: 最多保留 %{scale} 位小數
+  edit.below_min:
+    en: Enter %{min} or more
+    zh-CN: 请输入不小于 %{min} 的数
+    zh-HK: 請輸入不小於 %{min} 的數
+  edit.above_max:
+    en: Enter %{max} or less
+    zh-CN: 请输入不大于 %{max} 的数
+    zh-HK: 請輸入不大於 %{max} 的數
+  edit.too_long:
+    en: Use at most %{count} characters
+    zh-CN: 最多 %{count} 个字符
+    zh-HK: 最多 %{count} 個字元
+  edit.search:
+    en: Search
+    zh-CN: 搜索
+    zh-HK: 搜尋
+  edit.no_matches:
+    en: No matches
+    zh-CN: 无匹配项
+    zh-HK: 沒有相符項目
+  drag.row:
+    en: 1 row
+    zh-CN: 1 行
+    zh-HK: 1 行
+  drag.rows:
+    en: "%{count} rows"
+    zh-CN: "%{count} 行"
+    zh-HK: "%{count} 行"
+  edit.conflict:
+    en: Changed to %{value} while you edited
+    zh-CN: 编辑期间已改为 %{value}
+    zh-HK: 編輯期間已改為 %{value}
+  edit.pending:
+    en: Saving…
+    zh-CN: 正在保存…
+    zh-HK: 正在儲存…
+  edit.failed:
+    en: "Not saved: %{message}"
+    zh-CN: 未保存：%{message}
+    zh-HK: 未儲存：%{message}
+  a11y.saving:
+    en: saving
+    zh-CN: 正在保存
+    zh-HK: 正在儲存
+  a11y.not_saved:
+    en: not saved
+    zh-CN: 未保存
+    zh-HK: 未儲存
+  # Links in cells: what a screen reader hears after a link's text.
+  a11y.link:
+    en: link
+    zh-CN: 链接
+    zh-HK: 連結
+  # The column chooser.
+  chooser.label:
+    en: Columns
+    zh-CN: 列
+    zh-HK: 欄
+  chooser.search:
+    en: Search columns
+    zh-CN: 搜索列
+    zh-HK: 搜尋欄
+  chooser.frozen_left:
+    en: Frozen left
+    zh-CN: 左侧冻结
+    zh-HK: 左側凍結
+  chooser.scrolling:
+    en: Scrollable
+    zh-CN: 可滚动
+    zh-HK: 可捲動
+  chooser.frozen_right:
+    en: Frozen right
+    zh-CN: 右侧冻结
+    zh-HK: 右側凍結
+  chooser.band_shown:
+    en: "%{shown} of %{count}"
+    zh-CN: "%{shown} / %{count}"
+    zh-HK: "%{shown} / %{count}"
+  chooser.no_match:
+    en: No columns match
+    zh-CN: 没有匹配的列
+    zh-HK: 沒有相符的欄
+  chooser.show_all:
+    en: Show all
+    zh-CN: 全部显示
+    zh-HK: 全部顯示
+  chooser.move:
+    en: Move %{title}
+    zh-CN: 移动 %{title}
+    zh-HK: 移動 %{title}

@@ -1,0 +1,46 @@
+[package]
+name = "gpui-kit-grid-web-transit"
+description = "The transit example in the browser: Munich's trains, trams and buses by the timetable."
+version.workspace = true
+keywords.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+# Never enabled: the examples' offscreen snapshots (`trading/snapshot.rs`)
+# are native only. Declared so that their `cfg` names a known feature here.
+test-support = []
+
+[dependencies]
+# What the trading module and the example's code use, included by path
+# from `crates/grid/examples/`.
+async-channel.workspace = true
+fastrand.workspace = true
+gpui-kit.workspace = true
+gpui-kit-grid.workspace = true
+gpui-kit-grid-web-shell.workspace = true
+# The socket's binary messages, and the seed of the MQTT client id.
+js-sys.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+serde_json.workspace = true
+wasm-bindgen.workspace = true
+web-time.workspace = true
+# The browser's WebSocket to HSL's MQTT broker (the examples' shared
+# `mqtt/browser.rs`).
+web-sys = { workspace = true, features = ["CloseEvent", "Location", "Window"] }
+
+# Used by the code included by path, where cargo-machete does not look.
+[package.metadata.cargo-machete]
+ignored = ["async-channel", "fastrand", "gpui-kit-grid", "log", "parking_lot", "web-time"]
+
+[lints]
+workspace = true

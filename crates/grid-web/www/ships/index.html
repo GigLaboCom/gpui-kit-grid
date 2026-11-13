@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Every vessel around Finland, live from AIS: Digitraffic's open marine data, straight from the browser, a row a vessel updated in place."
+    />
+    <title>Ships · gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../shell.css" />
+    <style>
+      /* The Night Bridge theme's. */
+      :root {
+        --background: #061017;
+        --foreground: #d6e4ea;
+        --muted: #7d98a7;
+        --nav: #040b10;
+        --nav-border: #122634;
+        --accent: #ff8f3f;
+      }
+
+      /* The data's source and licence, at the right of the switcher. */
+      #credit {
+        position: fixed;
+        top: 0;
+        right: 12px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        color: var(--muted);
+        white-space: nowrap;
+        z-index: 1;
+      }
+
+      #credit a {
+        color: var(--muted);
+      }
+
+      #credit a:hover {
+        color: var(--accent);
+      }
+
+      /* On a narrow screen the status bar in the canvas carries it. */
+      @media (max-width: 720px) {
+        #credit {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="apps" aria-label="Examples"></nav>
+    <p id="credit">
+      Source:&nbsp;<a href="https://www.digitraffic.fi/en/marine-traffic/">Fintraffic / digitraffic.fi</a>,&nbsp;license&nbsp;<a href="https://creativecommons.org/licenses/by/4.0/">CC 4.0 BY</a>
+    </p>
+    <p id="status">Loading…</p>
+    <pre id="bench"></pre>
+    <script type="module">
+      // The page connects to Digitraffic itself, with no server between, or
+      // with `?source=replay` plays the recording (`setup.js`, which
+      // `<live-grid>` shares).
+      import { start } from '../shell.js';
+      import { setup } from './setup.js';
+
+      const ships = setup(new URLSearchParams(location.search));
+
+      start({
+        app: 'ships',
+        beforeRun: ships.beforeRun,
+        loading: ships.loading,
+        rates: '1',
+        // The vessels (`updates` counts their messages).
+        phase: (wasm, before, after) => ({
+          ships: {
+            messages: after.updates - before.updates,
+            messagesPerSecond: after.rate,
+            vessels: after.vessels,
+            named: after.named,
+            moving: after.moving,
+            shown: after.shown,
+            applyMs: after.apply_ms,
+            firstRowsMs: after.first_rows_ms,
+            connection: after.connection,
+          },
+        }),
+      });
+    </script>
+  </body>
+</html>

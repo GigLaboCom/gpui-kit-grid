@@ -1,0 +1,35 @@
+---
+// The landing's demo: the quotes example's poster, which becomes the
+// running example on a click (`LiveDemo`), and a line on what it is.
+import { withBase } from '../lib/links';
+import LiveDemo from './LiveDemo.astro';
+---
+
+<section class="landing-demo not-content" aria-label="Live demo">
+	<LiveDemo
+		demo={{ app: 'quotes', query: 'seed=7', poster: 'quotes' }}
+		label="The quotes example, 150 simulated quotes grouped by sector"
+		eager
+	/>
+	<p>
+		150 simulated quotes grouped by sector, with live averages in the captions: the grid itself,
+		compiled to WebAssembly. <a href={withBase('/examples/')}>Examples</a> has eight more that run
+		here.
+	</p>
+</section>
+
+<style>
+	.landing-demo {
+		margin: 0 auto;
+		max-width: 50rem;
+	}
+	p {
+		margin-top: 0.75rem;
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+		line-height: 1.5;
+	}
+	a {
+		color: var(--sl-color-text-accent);
+	}
+</style>

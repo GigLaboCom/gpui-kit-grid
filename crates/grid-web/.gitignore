@@ -1,0 +1,9 @@
+/www/pkg/
+/target/
+# A link to crates/grid/examples/fonts/, made by scripts/build-wasm.sh
+/www/fonts
+# A link to crates/grid/examples/data/ (the orbit example's elements), made
+# by scripts/build-wasm.sh; in a site build a folder (scripts/licenses.mjs)
+/www/data
+# The licences of what the pages serve, made by scripts/licenses.mjs
+/www/licenses/

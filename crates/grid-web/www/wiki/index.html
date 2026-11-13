@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Every Wikimedia wiki being edited, live, from Wikimedia's public EventStreams: about 900 rows ordered by edits a minute."
+    />
+    <title>Wiki · gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../shell.css" />
+    <style>
+      /* The Folio theme's. */
+      :root {
+        color-scheme: light;
+        --background: #f3efe6;
+        --foreground: #1f1c17;
+        --muted: #6e665a;
+        --nav: #eae4d8;
+        --nav-border: #d8cfbf;
+        --accent: #1d5b79;
+      }
+
+      /* The attribution under the canvas. */
+      body > canvas {
+        height: calc(100% - 28px - 24px) !important;
+      }
+
+      #source {
+        position: fixed;
+        inset: auto 0 0 0;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        background: var(--nav);
+        border-top: 1px solid var(--nav-border);
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #source a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="apps" aria-label="Examples"></nav>
+    <p id="status">Loading…</p>
+    <pre id="bench"></pre>
+    <footer id="source">
+      <span>
+        Data:
+        <a href="https://wikitech.wikimedia.org/wiki/Event_Platform/EventStreams_HTTP_Service"
+          >Wikimedia EventStreams</a
+        >; titles and pages are the wikis' content,
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, Wikimedia
+        contributors. The stream opens only when you press Start, closes when the tab has been
+        hidden for a minute and opens again when you come back; user names are never read.
+      </span>
+    </footer>
+    <script type="module">
+      // The stream opens only on Start in the view; a recording gives the
+      // Replay button and the fallback, and `?replay` plays it at start
+      // (`setup.js`, which `<live-grid>` shares). The bench's rates are
+      // replay speeds (default 1,4).
+      import { start } from '../shell.js';
+      import { setup } from './setup.js';
+
+      const wiki = setup(new URLSearchParams(location.search));
+
+      start({
+        app: 'wiki',
+        beforeRun: wiki.beforeRun,
+        loading: wiki.loading,
+        rates: '1,4',
+        // The pump's steps (`updates`), the events a second on the
+        // stream's clock, and the wikis.
+        phase: (wasm, before, after) => ({
+          wiki: {
+            steps: after.updates - before.updates,
+            rowsPerSecond: after.rate,
+            eventsPerSecond: after.events_per_second,
+            wikis: after.wikis,
+            perMinute: after.per_minute,
+            stepMs: after.step_ms,
+            mode: after.mode,
+          },
+        }),
+      });
+    </script>
+  </body>
+</html>

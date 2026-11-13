@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A trading desk: a dock of live grids, a chart, a command line and function keys over a simulated market, in three themes."
+    />
+    <title>Desk · gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../shell.css" />
+    <style>
+      /* The Amber theme's (`?theme=` changes the theme, not these). */
+      :root {
+        --background: #000000;
+        --foreground: #fb9e00;
+        --muted: #a07a3a;
+        --nav: #000000;
+        --nav-border: #1a1a1a;
+        --accent: #fb9e00;
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="apps" aria-label="Examples"></nav>
+    <p id="status">Loading…</p>
+    <pre id="bench"></pre>
+    <script type="module">
+      import { start } from '../shell.js';
+
+      start({ app: 'desk', notice: 'Simulated prices, not market data' });
+    </script>
+  </body>
+</html>

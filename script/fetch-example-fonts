@@ -1,0 +1,323 @@
+#!/usr/bin/env -S python3 -I
+"""Downloads the fonts of the trading examples (`desk` and the others that
+share `crates/grid/examples/trading/`) into `crates/grid/examples/fonts/`,
+one folder for all of them (gitignored: the fonts are not committed), and
+the face the web pages (`crates/grid-web`) load for GPUI's default family.
+
+    python3 -I script/fetch-example-fonts
+
+An example's themes name families from the list below; a new family is one
+more entry in `FILES`.
+
+Every font is SIL Open Font License 1.1; each family's licence text is saved
+next to its faces. Only the Regular and Bold faces are fetched, as TTF, and
+of IBM Plex Sans only Regular: GPUI's web platform draws its default family,
+`.SystemUIFont`, in IBM Plex Sans, and the web pages load it for the text no
+theme styles (a drag's view, which GPUI draws outside the window's root,
+such as gpui-kit's dock tab); without it, laying that text out panics. Each
+URL is pinned to a commit or a release tag, and every file is checked against
+its SHA-256 below before it is written. A file already present with the right
+hash is not downloaded again.
+
+Two families come from a release archive (Inter, Iosevka). Only the archive's
+directory and the two faces are read, with HTTP range requests, not the whole
+archive (Iosevka's is 120 MB); a server without range requests gets the whole
+archive downloaded once instead.
+
+Without these fonts the examples run with the system's monospace font and
+say so once on stderr.
+"""
+
+import hashlib
+import http.client
+import io
+import pathlib
+import sys
+import urllib.request
+import zipfile
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+DEST = ROOT / "crates" / "grid" / "examples" / "fonts"
+
+GOOGLE_FONTS = (
+    "https://raw.githubusercontent.com/google/fonts/"
+    "fbe81817505e8aeadc53cc7a38a2b76fb57c333e/ofl"
+)
+# google/fonts ships JetBrains Mono and Inter only as variable fonts, which
+# give no Bold face once loaded: their static faces come from upstream.
+JETBRAINS_MONO = (
+    "https://raw.githubusercontent.com/JetBrains/JetBrainsMono/"
+    "cd5227bd1f61dff3bbd6c814ceaf7ffd95e947d9"  # tag v2.304
+)
+INTER_ZIP = "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip"
+IOSEVKA_ZIP = (
+    "https://github.com/be5invis/Iosevka/releases/download/v34.9.1/"
+    "PkgTTF-Unhinted-Iosevka-34.9.1.zip"
+)
+IOSEVKA = (
+    "https://raw.githubusercontent.com/be5invis/Iosevka/"
+    "cea353b17b9b5c6e22da4f0fcae66f16d68a4edf"  # tag v34.9.1
+)
+# google/fonts ships Manrope only as a variable font too: the static faces
+# come from the upstream commit google/fonts was built from.
+MANROPE = (
+    "https://raw.githubusercontent.com/googlefonts/manrope/"
+    "6f81ebecdf65e4463b798cc07b16a4f8d5216917"
+)
+# google/fonts ships IBM Plex Sans only as a variable font too: the static
+# face comes from upstream.
+IBM_PLEX_SANS = (
+    "https://raw.githubusercontent.com/IBM/plex/"
+    "1da12f02587b630c07e92692d21492d722f53614"  # tag @ibm/plex-sans@1.1.0
+    "/packages/plex-sans"
+)
+
+# (saved as, URL, member of the archive at the URL or None, SHA-256)
+FILES = [
+    (
+        "ibm-plex-mono/IBMPlexMono-Regular.ttf",
+        f"{GOOGLE_FONTS}/ibmplexmono/IBMPlexMono-Regular.ttf",
+        None,
+        "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46",
+    ),
+    (
+        "ibm-plex-mono/IBMPlexMono-Bold.ttf",
+        f"{GOOGLE_FONTS}/ibmplexmono/IBMPlexMono-Bold.ttf",
+        None,
+        "ac27abd6450a64dd94467580a02fe6235156d5b92f2926ebbc8e7489df64e0be",
+    ),
+    (
+        "ibm-plex-mono/OFL.txt",
+        f"{GOOGLE_FONTS}/ibmplexmono/OFL.txt",
+        None,
+        "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    ),
+    (
+        "jetbrains-mono/JetBrainsMono-Regular.ttf",
+        f"{JETBRAINS_MONO}/fonts/ttf/JetBrainsMono-Regular.ttf",
+        None,
+        "a0bf60ef0f83c5ed4d7a75d45838548b1f6873372dfac88f71804491898d138f",
+    ),
+    (
+        "jetbrains-mono/JetBrainsMono-Bold.ttf",
+        f"{JETBRAINS_MONO}/fonts/ttf/JetBrainsMono-Bold.ttf",
+        None,
+        "5590990c82e097397517f275f430af4546e1c45cff408bde4255dad142479dcb",
+    ),
+    (
+        "jetbrains-mono/OFL.txt",
+        f"{JETBRAINS_MONO}/OFL.txt",
+        None,
+        "30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad",
+    ),
+    (
+        "inter/Inter-Regular.ttf",
+        INTER_ZIP,
+        "extras/ttf/Inter-Regular.ttf",
+        "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+    ),
+    (
+        "inter/Inter-Bold.ttf",
+        INTER_ZIP,
+        "extras/ttf/Inter-Bold.ttf",
+        "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+    ),
+    (
+        "inter/OFL.txt",
+        INTER_ZIP,
+        "LICENSE.txt",
+        "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+    ),
+    (
+        "barlow-semi-condensed/BarlowSemiCondensed-Regular.ttf",
+        f"{GOOGLE_FONTS}/barlowsemicondensed/BarlowSemiCondensed-Regular.ttf",
+        None,
+        "e8c7242f612b13d026e18a94b63b0fd079e91a3faf009d1b6981dbb5f16d1153",
+    ),
+    (
+        "barlow-semi-condensed/BarlowSemiCondensed-Bold.ttf",
+        f"{GOOGLE_FONTS}/barlowsemicondensed/BarlowSemiCondensed-Bold.ttf",
+        None,
+        "5bd6757e459a110da81b44532f0f43058e2dab2401688abca84f2fdbde193cbb",
+    ),
+    (
+        "barlow-semi-condensed/OFL.txt",
+        f"{GOOGLE_FONTS}/barlowsemicondensed/OFL.txt",
+        None,
+        "186d750eb496a4c17a76385f82be6aea2ac1cf2de074a811d63786cf374ea73f",
+    ),
+    (
+        "iosevka/Iosevka-Regular.ttf",
+        IOSEVKA_ZIP,
+        "Iosevka-Regular.ttf",
+        "3ccca953d92779ff58df76f84c0be343d9e6a59fd2f4be0a4560d47fa16b0099",
+    ),
+    (
+        "iosevka/Iosevka-Bold.ttf",
+        IOSEVKA_ZIP,
+        "Iosevka-Bold.ttf",
+        "8604a8d7d67f4ee040aac43b5e60fda08e1ce541f208f558a53b912017efd384",
+    ),
+    (
+        "iosevka/OFL.txt",
+        f"{IOSEVKA}/LICENSE.md",
+        None,
+        "4ba53c7c1cb39279aae5f8d7d22054c485c71169920e5a36ed098b115e2e3c5d",
+    ),
+    (
+        "manrope/Manrope-Regular.ttf",
+        f"{MANROPE}/fonts/ttf/manrope-regular.ttf",
+        None,
+        "2d9a9960fd191a7f1d9060768818074dd2b76ba84a64a35efd2c22bf39030903",
+    ),
+    (
+        "manrope/Manrope-Bold.ttf",
+        f"{MANROPE}/fonts/ttf/manrope-bold.ttf",
+        None,
+        "2da33eb378d59e6314ed7afdfa837cdcb60e41ac8b1f5d3c4909471b95fcf7d9",
+    ),
+    (
+        "manrope/OFL.txt",
+        f"{MANROPE}/OFL.txt",
+        None,
+        "e01b637272e0cbdfb240184dd98ea5cc671556d9894dae2668d92ab2c906787c",
+    ),
+    (
+        "ibm-plex-sans/IBMPlexSans-Regular.ttf",
+        f"{IBM_PLEX_SANS}/fonts/complete/ttf/IBMPlexSans-Regular.ttf",
+        None,
+        "975dcda37d80f038dcd143c22e33ca2d97a0cc5a929aace1c749153b0fe1afa5",
+    ),
+    (
+        "ibm-plex-sans/OFL.txt",
+        f"{IBM_PLEX_SANS}/LICENSE.txt",
+        None,
+        "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    ),
+]
+
+TIMEOUT = 120
+# A dropped transfer resumes where it stopped, this many times per request.
+RESUMES = 10
+# An archive is read in windows of this size, each fetched once.
+WINDOW = 1 << 20
+ERRORS = (OSError, http.client.HTTPException)
+
+
+def get(url, headers=None):
+    request = urllib.request.Request(url, headers=headers or {})
+    return urllib.request.urlopen(request, timeout=TIMEOUT)
+
+
+def fetch(url, start=0, end=None):
+    """The bytes `start..=end` at `url` (to the end without `end`). A
+    dropped connection resumes with a range request for the rest."""
+    data = bytearray()
+    for _ in range(RESUMES):
+        offset = start + len(data)
+        ranged = offset > 0 or end is not None
+        headers = {"Range": f"bytes={offset}-{'' if end is None else end}"} if ranged else {}
+        try:
+            with get(url, headers) as response:
+                if ranged and response.status != 206:
+                    raise OSError(f"{url}: no range requests (status {response.status})")
+                data += response.read()
+                return bytes(data)
+        except http.client.IncompleteRead as error:
+            data += error.partial
+    raise OSError(f"{url}: the transfer kept dropping")
+
+
+class RemoteFile(io.RawIOBase):
+    """A file over HTTP that fetches only the windows read, so `zipfile`
+    reads an archive's directory and one member, not the whole archive."""
+
+    def __init__(self, url):
+        with get(url, {"Range": "bytes=0-0"}) as response:
+            self.url = response.geturl()
+            if response.status == 206:
+                self.size = int(response.headers["Content-Range"].rsplit("/", 1)[1])
+                self.windows = {}
+            else:
+                # No range requests: the whole archive, once.
+                data = response.read()
+                self.size = len(data)
+                self.windows = {ix: data[ix * WINDOW : (ix + 1) * WINDOW] for ix in range(len(data) // WINDOW + 1)}
+        self.pos = 0
+
+    def readable(self):
+        return True
+
+    def seekable(self):
+        return True
+
+    def tell(self):
+        return self.pos
+
+    def seek(self, offset, whence=io.SEEK_SET):
+        base = {io.SEEK_SET: 0, io.SEEK_CUR: self.pos, io.SEEK_END: self.size}[whence]
+        self.pos = base + offset
+        return self.pos
+
+    def readinto(self, buffer):
+        if self.pos >= self.size:
+            return 0
+        ix, offset = divmod(self.pos, WINDOW)
+        if ix not in self.windows:
+            end = min((ix + 1) * WINDOW, self.size) - 1
+            self.windows[ix] = fetch(self.url, ix * WINDOW, end)
+        data = self.windows[ix][offset : offset + len(buffer)]
+        buffer[: len(data)] = data
+        self.pos += len(data)
+        return len(data)
+
+
+archives = {}
+
+
+def download(url, member):
+    if member is None:
+        return fetch(url)
+    if url not in archives:
+        archives[url] = zipfile.ZipFile(RemoteFile(url))
+    return archives[url].read(member)
+
+
+def sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def main():
+    failed = False
+    for name, url, member, expected in FILES:
+        path = DEST / name
+        if path.is_file() and sha256(path.read_bytes()) == expected:
+            print(f"ok       {name}")
+            continue
+        source = f"{url} [{member}]" if member else url
+        try:
+            data = download(url, member)
+        except (*ERRORS, KeyError, zipfile.BadZipFile) as error:
+            print(f"FAILED   {name}: {source}: {error}", file=sys.stderr)
+            failed = True
+            continue
+        actual = sha256(data)
+        if actual != expected:
+            print(
+                f"MISMATCH {name}: {source}\n  expected {expected}\n  got      {actual}",
+                file=sys.stderr,
+            )
+            failed = True
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        partial = path.with_name(path.name + ".part")
+        partial.write_bytes(data)
+        partial.replace(path)
+        print(f"fetched  {name} ({len(data)} bytes)")
+    if failed:
+        sys.exit(1)
+    print(f"fonts in {DEST}")
+
+
+if __name__ == "__main__":
+    main()

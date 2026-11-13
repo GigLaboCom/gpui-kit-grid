@@ -1,0 +1,26 @@
+// The site on Cloudflare: a Worker with static assets only, no code, so no
+// request counts against the Workers limits. `.github/workflows/site.yml`
+// deploys it from `dist/` (the Astro site, `demo/` and `api/`) on a site
+// release, a tag `site-vX.Y.Z`; a pull request uploads a preview version
+// instead. The response headers are `dist/_headers` (from `public/_headers`).
+{
+  // The Worker's name in the Cloudflare account.
+  "name": "gpui-kit-grid-site",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // `/start` answers with `/start/`, as Astro's `trailingSlash: 'always'`
+    // writes its links.
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  // The site lives on its own host, a Custom Domain in the `giglabo.com`
+  // zone. Binding it from here needs a token that may edit the zone's
+  // Workers routes; bound once in the dashboard instead, this entry goes
+  // and the token needs only "Edit Cloudflare Workers".
+  "routes": [{ "pattern": "gkg.giglabo.com", "custom_domain": true }],
+  // No `*.workers.dev` address for the site itself; versions keep their
+  // preview addresses (`pr-<number>-<name>.<subdomain>.workers.dev`).
+  "workers_dev": false,
+  "preview_urls": true
+}

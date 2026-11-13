@@ -1,0 +1,30 @@
+[package]
+name = "gpui-kit-grid-macros"
+description = "The derive macro of gpui-kit-grid."
+version = "1.0.0"
+keywords = ["gpui", "grid", "derive"]
+categories = ["gui", "development-tools::procedural-macro-helpers"]
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+
+[dev-dependencies]
+# The doc tests use the derive through the grid crate (a dev-dependency
+# cycle, as tokio-macros has with tokio).
+gpui-kit-grid = { workspace = true, features = ["derive"] }
+# The unit tests parse the expansion back as an `impl` item.
+syn = { workspace = true, features = ["full"] }
+
+[lints]
+workspace = true

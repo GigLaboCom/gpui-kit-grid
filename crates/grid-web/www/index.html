@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./shell.css" />
+    <style>
+      html,
+      body {
+        overflow: auto;
+      }
+
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 16px;
+      }
+
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      main > p {
+        color: var(--muted);
+        margin-bottom: 24px;
+      }
+
+      #demos {
+        list-style: none;
+        display: grid;
+        gap: 8px;
+      }
+
+      #demos a {
+        display: block;
+        padding: 12px 16px;
+        border: 1px solid var(--nav-border);
+        border-radius: 6px;
+        background: var(--nav);
+        color: var(--foreground);
+        text-decoration: none;
+      }
+
+      #demos a:hover {
+        border-color: var(--muted);
+      }
+
+      #demos strong {
+        display: block;
+        font-weight: 600;
+      }
+
+      #demos span {
+        color: var(--muted);
+      }
+
+      .licenses {
+        margin-top: 24px;
+      }
+
+      .licenses a {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>gpui-kit-grid in the browser</h1>
+      <p>
+        A live-updating data grid for gpui-kit applications on GPUI's web platform. Each
+        example is its own module and page. Every price shown is simulated.
+      </p>
+      <ul id="demos"></ul>
+      <p class="licenses"><a href="./licenses/">Licenses and data sources</a></p>
+    </main>
+    <script type="module">
+      // The examples are listed in `pkg/apps.json`, which the build writes,
+      // each described by its page's own description. An old link to one
+      // example (`?app=desk&seed=7`, the quotes without `app`) goes to its
+      // page with the other parameters kept.
+      const response = await fetch('./pkg/apps.json').catch(() => null);
+      const apps = response?.ok ? await response.json() : [];
+      if (location.search.length > 1) {
+        // An unknown example is the quotes, as it was.
+        const asked = new URLSearchParams(location.search).get('app');
+        const app = apps.includes(asked) || (asked && apps.length === 0) ? asked : 'quotes';
+        // The other parameters as they were written.
+        const name = (pair) => {
+          const raw = pair.split('=')[0].replaceAll('+', ' ');
+          try {
+            return decodeURIComponent(raw);
+          } catch {
+            return raw;
+          }
+        };
+        const rest = location.search
+          .slice(1)
+          .split('&')
+          .filter((pair) => pair !== '' && name(pair) !== 'app');
+        const query = rest.length > 0 ? `?${rest.join('&')}` : '';
+        location.replace(`./${app}/${query}${location.hash}`);
+      } else {
+        const pages = await Promise.all(
+          apps.map(async (app) => {
+            const page = await fetch(`./${app}/`).catch(() => null);
+            const html = page?.ok ? await page.text() : '';
+            const meta = new DOMParser()
+              .parseFromString(html, 'text/html')
+              .querySelector('meta[name="description"]');
+            return [app, meta?.content ?? ''];
+          }),
+        );
+        const list = document.getElementById('demos');
+        for (const [app, about] of pages) {
+          const link = document.createElement('a');
+          link.href = `./${app}/`;
+          const name = document.createElement('strong');
+          name.textContent = app[0].toUpperCase() + app.slice(1);
+          const description = document.createElement('span');
+          description.textContent = about;
+          link.append(name, description);
+          const item = document.createElement('li');
+          item.append(link);
+          list.append(item);
+        }
+      }
+    </script>
+  </body>
+</html>

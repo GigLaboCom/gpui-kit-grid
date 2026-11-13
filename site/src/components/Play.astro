@@ -1,0 +1,369 @@
+---
+// Play: the live quotes example with an editor of its theme remix. Each
+// change recolours the running grid, goes into the address (`#theme=v1.…`,
+// never sent to the site) and into the snippet below, which the buttons
+// open on snippet sites. Nothing is stored.
+//
+// The element comes from this site's `/embed/v1/` (the build puts it there,
+// and the deploy puts the examples under `/demo/`). In development
+// `PUBLIC_DEMO_ORIGIN` points at served examples instead:
+// `make -C crates/grid-web serve` in one terminal, then
+// `PUBLIC_DEMO_ORIGIN=http://127.0.0.1:8080/ bun run dev`.
+import { withBase } from '../lib/links';
+import { EMBED_SRC, snippet, codePen, jsFiddle, stackBlitz } from '../lib/snippets';
+import { COLOR_GROUPS, FAMILY_KEYS, NUMBER_KEYS } from '../lib/theme-keys';
+
+const demoOrigin = import.meta.env.PUBLIC_DEMO_ORIGIN as string | undefined;
+const elementUrl = demoOrigin
+	? new URL('embed/live-grid.js', demoOrigin).href
+	: withBase('/embed/v1/live-grid.js');
+// What snippets on other sites load: always the site's own address.
+const snippetSrc = EMBED_SRC;
+const html = snippet(snippetSrc, null);
+const prefills = [
+	{ name: 'CodePen', prefill: codePen(html) },
+	{ name: 'JSFiddle', prefill: jsFiddle(html) },
+	{ name: 'StackBlitz', prefill: stackBlitz(html) },
+];
+---
+
+<div class="play not-content" data-play data-element={elementUrl} data-snippet-src={snippetSrc}>
+	<live-grid app="quotes" query="seed=7&rate=20" autoload></live-grid>
+
+	<div class="bar">
+		<button type="button" data-copy-link>Copy link</button>
+		<button type="button" data-reset>Reset</button>
+		<span class="status" role="status" data-status>Loading the example…</span>
+	</div>
+
+	<form class="editor" data-editor>
+		<fieldset>
+			<legend>Fonts and shape</legend>
+			{
+				FAMILY_KEYS.map(({ key, label }) => (
+					<label>
+						<span>{label}</span>
+						<select data-key={key} disabled />
+					</label>
+				))
+			}
+			{
+				NUMBER_KEYS.map(({ key, label, min, max, step }) => (
+					<label>
+						<span>{label}</span>
+						<input type="number" data-key={key} min={min} max={max} step={step} disabled />
+					</label>
+				))
+			}
+		</fieldset>
+		{
+			COLOR_GROUPS.map(({ title, keys }) => (
+				<fieldset>
+					<legend>{title}</legend>
+					{keys.map(({ key, label }) => (
+						<label title={key}>
+							<span>{label}</span>
+							<input type="color" data-color={key} disabled />
+							<input type="text" data-key={`colors.${key}`} spellcheck="false" size="9" aria-label={`${label} (${key})`} disabled />
+						</label>
+					))}
+				</fieldset>
+			))
+		}
+	</form>
+</div>
+
+<h2 id="embed">Embed</h2>
+<p>
+	Two lines show this grid, in this theme, on any page: the snippet sites
+	below, a blog, your own docs. The theme is the one in this page's address.
+</p>
+<pre class="snippet" data-snippet>{html}</pre>
+<div class="open not-content">
+	<button type="button" data-copy-snippet>Copy</button>
+	{
+		prefills.map(({ name, prefill }) => (
+			<form method="post" action={prefill.action} target="_blank" {...{ rel: 'noopener noreferrer' }} data-prefill={name}>
+				{Object.entries(prefill.fields).map(([field, value]) => (
+					<input type="hidden" name={field} value={value} />
+				))}
+				<button type="submit">Open in {name}</button>
+			</form>
+		))
+	}
+	<a class="button" href="https://developer.mozilla.org/en-US/play" target="_blank" rel="noopener noreferrer" data-mdn>
+		Open in MDN Playground
+	</a>
+</div>
+
+<script>
+	import { snippet, codePen, jsFiddle, stackBlitz, mdnPlayground, type Prefill } from '../lib/snippets';
+
+	type Remix = Record<string, unknown> & { colors?: Record<string, string> };
+	interface LiveGridClass {
+		packTheme(theme: Remix): Promise<string>;
+		unpackTheme(packed: string): Promise<Remix>;
+	}
+	interface LiveGridElement extends HTMLElement {
+		grid: { current_theme(): string } | null;
+		setTheme(theme: Remix): Promise<unknown>;
+	}
+
+	const root = document.querySelector<HTMLElement>('[data-play]')!;
+	const status = root.querySelector<HTMLElement>('[data-status]')!;
+	const editor = root.querySelector<HTMLFormElement>('[data-editor]')!;
+	const grid = root.querySelector('live-grid') as LiveGridElement;
+	const snippetSrc = root.dataset.snippetSrc!;
+	const builders: Record<string, (html: string) => Prefill> = {
+		CodePen: codePen,
+		JSFiddle: jsFiddle,
+		StackBlitz: stackBlitz,
+	};
+
+	let base: Record<string, unknown> = {}; // the example's own theme, by key
+	let LiveGrid: LiveGridClass;
+
+	const say = (text: string) => (status.textContent = text);
+	const hexOf = (color: string) => (/^#[0-9a-f]{6}/i.test(color) ? color.slice(0, 7) : '#000000');
+	const fields = () => [...editor.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-key]')];
+
+	/** The theme keys of a remix (`colors.x` for a colour), flattened. */
+	function flatten(theme: Remix): Record<string, unknown> {
+		const flat: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(theme)) {
+			if (key === 'colors') {
+				for (const [color, hex] of Object.entries(value as Record<string, string>)) flat[`colors.${color}`] = hex;
+			} else {
+				flat[key] = value;
+			}
+		}
+		return flat;
+	}
+
+	/** The editor's values that differ from the example's theme, as a remix. */
+	function remixOfEditor(): Remix {
+		const remix: Remix = {};
+		for (const field of fields()) {
+			const key = field.dataset.key!;
+			const value = field instanceof HTMLInputElement && field.type === 'number' ? Number(field.value) : field.value.trim();
+			if (value === '' || value === base[key] || (typeof value === 'string' && typeof base[key] === 'string' && value.toLowerCase() === (base[key] as string).toLowerCase())) continue;
+			if (key.startsWith('colors.')) (remix.colors ??= {})[key.slice(7)] = value as string;
+			else remix[key] = value;
+		}
+		return remix;
+	}
+
+	function fill(values: Record<string, unknown>) {
+		for (const field of fields()) {
+			const value = values[field.dataset.key!];
+			if (value !== undefined && value !== null) field.value = String(value);
+			field.disabled = false;
+			if (field.dataset.key!.startsWith('colors.')) {
+				const picker = editor.querySelector<HTMLInputElement>(`[data-color="${field.dataset.key!.slice(7)}"]`)!;
+				picker.value = hexOf(field.value);
+				picker.disabled = false;
+			}
+		}
+	}
+
+	/** Shows the snippet with `packed`, and points the buttons at it. */
+	async function showSnippet(packed: string | null) {
+		const html = snippet(snippetSrc, packed);
+		document.querySelector('[data-snippet]')!.textContent = html;
+		for (const form of document.querySelectorAll<HTMLFormElement>('form[data-prefill]')) {
+			const { fields: values } = builders[form.dataset.prefill!](html);
+			for (const [name, value] of Object.entries(values)) {
+				form.querySelector<HTMLInputElement>(`input[name="${CSS.escape(name)}"]`)!.value = value;
+			}
+		}
+		document.querySelector<HTMLAnchorElement>('[data-mdn]')!.href = await mdnPlayground(html);
+	}
+
+	let pending = false;
+	/** Applies the editor's remix once per frame, at most. */
+	function schedule() {
+		if (pending) return;
+		pending = true;
+		requestAnimationFrame(async () => {
+			pending = false;
+			const remix = remixOfEditor();
+			const empty = Object.keys(remix).length === 0;
+			try {
+				await grid.setTheme(remix);
+				const packed = empty ? null : await LiveGrid.packTheme(remix);
+				history.replaceState(null, '', packed ? `#theme=${packed}` : location.pathname + location.search);
+				await showSnippet(packed);
+				say(empty ? 'The example’s own theme' : 'Your remix, in this page’s address');
+			} catch (error) {
+				say(`Not applied: ${error instanceof Error ? error.message : error}`);
+			}
+		});
+	}
+
+	editor.addEventListener('input', (event) => {
+		const target = event.target as HTMLInputElement;
+		if (target.dataset.color) {
+			// A picker keeps the colour's alpha from the text field.
+			const text = editor.querySelector<HTMLInputElement>(`[data-key="colors.${target.dataset.color}"]`)!;
+			const alpha = /^#[0-9a-f]{8}$/i.test(text.value) ? text.value.slice(7) : '';
+			text.value = target.value + alpha;
+		} else if (target.dataset.key?.startsWith('colors.')) {
+			const picker = editor.querySelector<HTMLInputElement>(`[data-color="${target.dataset.key.slice(7)}"]`)!;
+			if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(target.value)) picker.value = hexOf(target.value);
+			else return; // half typed
+		}
+		schedule();
+	});
+	editor.addEventListener('change', schedule);
+	editor.addEventListener('submit', (event) => event.preventDefault());
+
+	root.querySelector('[data-reset]')!.addEventListener('click', () => {
+		fill(base);
+		schedule();
+	});
+	root.querySelector('[data-copy-link]')!.addEventListener('click', async (event) => {
+		const button = event.currentTarget as HTMLButtonElement;
+		await navigator.clipboard.writeText(location.href).then(
+			() => (button.textContent = 'Link copied'),
+			() => (button.textContent = 'Copy failed'),
+		);
+		setTimeout(() => (button.textContent = 'Copy link'), 2000);
+	});
+	document.querySelector('[data-copy-snippet]')!.addEventListener('click', async (event) => {
+		const button = event.currentTarget as HTMLButtonElement;
+		const text = document.querySelector('[data-snippet]')!.textContent ?? '';
+		await navigator.clipboard.writeText(text).then(
+			() => (button.textContent = 'Copied'),
+			() => (button.textContent = 'Copy failed'),
+		);
+		setTimeout(() => (button.textContent = 'Copy'), 2000);
+	});
+
+	grid.addEventListener('error', (event) => say((event as unknown as CustomEvent).detail.message));
+	grid.addEventListener('ready', async () => {
+		const current = JSON.parse(grid.grid?.current_theme() ?? 'null');
+		if (!current) return;
+		base = flatten(current.theme);
+		for (const key of ['font.family', 'mono_font.family']) {
+			const select = editor.querySelector<HTMLSelectElement>(`[data-key="${key}"]`)!;
+			select.replaceChildren(...current.families.map((family: string) => new Option(family, family)));
+		}
+		let remix: Remix = {};
+		const packed = new URLSearchParams(location.hash.slice(1)).get('theme');
+		if (packed) {
+			try {
+				remix = await LiveGrid.unpackTheme(packed);
+				await grid.setTheme(remix);
+			} catch (error) {
+				say(`The theme in the link does not apply: ${error instanceof Error ? error.message : error}`);
+				remix = {};
+			}
+		}
+		fill({ ...base, ...flatten(remix) });
+		await showSnippet(packed && Object.keys(remix).length ? packed : null);
+		say(Object.keys(remix).length ? 'The remix from the link' : 'The example’s own theme: change any colour');
+	});
+
+	import(/* @vite-ignore */ root.dataset.element!).then(
+		() => (LiveGrid = customElements.get('live-grid') as unknown as LiveGridClass),
+		(error) => say(`The example did not load: ${error}`),
+	);
+</script>
+
+<style>
+	.play live-grid {
+		height: 420px;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.25rem;
+		overflow: hidden;
+	}
+	.bar,
+	.open {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+		margin-block: 0.75rem;
+	}
+	.status {
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-sm);
+	}
+	button,
+	.button {
+		font: inherit;
+		font-size: var(--sl-text-sm);
+		padding: 0.375rem 0.75rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.25rem;
+		background: var(--sl-color-gray-6);
+		color: var(--sl-color-white);
+		text-decoration: none;
+		cursor: default;
+	}
+	button:hover,
+	.button:hover {
+		border-color: var(--sl-color-gray-4);
+	}
+	.open form {
+		display: contents;
+	}
+	.editor {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+		gap: 0.75rem;
+	}
+	fieldset {
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.25rem;
+		padding: 0.5rem 0.75rem 0.75rem;
+		min-width: 0;
+	}
+	legend {
+		padding-inline: 0.25rem;
+		font-weight: 600;
+		font-size: var(--sl-text-sm);
+	}
+	.editor label {
+		display: grid;
+		grid-template-columns: 1fr auto auto;
+		align-items: center;
+		gap: 0.375rem;
+		margin-top: 0.375rem;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-2);
+	}
+	.editor label:has(select),
+	.editor label:has(input[type='number']) {
+		grid-template-columns: 1fr minmax(0, 9rem);
+	}
+	.editor input,
+	.editor select {
+		font: inherit;
+		font-size: var(--sl-text-xs);
+		background: var(--sl-color-black);
+		color: var(--sl-color-white);
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.25rem;
+		padding: 0.125rem 0.25rem;
+		min-width: 0;
+	}
+	.editor input[type='color'] {
+		width: 2rem;
+		height: 1.5rem;
+		padding: 0;
+	}
+	.editor input[type='text'] {
+		font-family: var(--sl-font-mono);
+		width: 6.5rem;
+	}
+	.snippet {
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+	@media (max-width: 30rem) {
+		.play live-grid {
+			height: 360px;
+		}
+	}
+</style>

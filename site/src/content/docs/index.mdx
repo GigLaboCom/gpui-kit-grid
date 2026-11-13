@@ -1,0 +1,38 @@
+---
+title: gpui-kit-grid
+description: A live data grid for gpui-kit (GPUI) applications, with rows by key from any thread and sorting, filtering, grouping and trees in the background.
+template: splash
+hero:
+  tagline: 'A live data grid for gpui-kit (GPUI) applications: hundreds of thousands of rows, thousands of updates per second from any thread, change highlight, sorting, filtering, grouping and trees in the background.'
+  actions:
+    - text: Get started
+      link: /start/
+      icon: right-arrow
+    - text: Examples
+      link: /examples/
+      variant: secondary
+    - text: API reference
+      link: /api/
+      variant: secondary
+    - text: Repository
+      link: https://github.com/GigLaboCom/gpui-kit-grid
+      variant: minimal
+      icon: github
+---
+
+import KeyNumbers from '../../components/KeyNumbers.astro';
+import LandingDemo from '../../components/LandingDemo.astro';
+
+<LandingDemo />
+
+<KeyNumbers />
+
+## Try it
+
+The quick start example, from a checkout of the repository: a window with 1000 trades that a producer thread keeps updating, sorted by price.
+
+```sh frame="none" wrap
+cargo run --release -p gpui-kit-grid --example quickstart
+```
+
+Its code is in [`crates/grid/examples/quickstart.rs`](https://github.com/GigLaboCom/gpui-kit-grid/blob/main/crates/grid/examples/quickstart.rs).

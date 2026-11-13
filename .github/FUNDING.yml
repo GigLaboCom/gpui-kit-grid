@@ -1,0 +1,4 @@
+# The "Sponsor" button of the repository page. It opens the site's own
+# page, which links to the service behind it, so the button needs no handle
+# and survives a change of service.
+custom: ["https://gkg.giglabo.com/sponsor/"]

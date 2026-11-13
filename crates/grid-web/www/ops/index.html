@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A data center's operations console during a simulated incident storm: thousands of alert updates a second collapse into one live row per alert, beside a fleet of thousands of hosts in a tree."
+    />
+    <title>Ops · gpui-kit-grid in the browser</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="../shell.css" />
+    <style>
+      /* The Graphite theme's. */
+      :root {
+        --background: #0c0d10;
+        --foreground: #dadce3;
+        --muted: #80869a;
+        --nav: #09090b;
+        --nav-border: #1f2127;
+        --accent: #9d8cf8;
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="apps" aria-label="Examples"></nav>
+    <p id="status">Loading…</p>
+    <pre id="bench"></pre>
+    <script type="module">
+      // `?storm` starts a storm at once (F8 or the Start storm button
+      // otherwise), `?hosts=` sizes the fleet, `?storm_seconds=` how long a
+      // storm lasts, `?seed=` the same fleet and storm every run.
+      import { start } from '../shell.js';
+
+      start({
+        app: 'ops',
+        notice: 'Simulated data',
+        // No rate to set: the simulator's own; one phase, `?rates=1,1` for more.
+        rates: '1',
+        // The storm (`updates` counts the alert updates).
+        phase: (wasm, before, after) => ({
+          ops: {
+            alertUpdates: after.updates - before.updates,
+            phase: after.phase,
+            keys: after.keys,
+            hostsDown: after.hosts_down,
+            fleetFrames: after.fleet_frames - before.fleet_frames,
+            fleetRebuilds: after.fleet_rebuilds - before.fleet_rebuilds,
+            fleetLastRebuildMs: after.fleet_last_rebuild_ms,
+            fleetMaxRebuildMsSinceStart: after.fleet_max_rebuild_ms,
+            fleetLastPrepaintMs: after.fleet_last_prepaint_ms,
+          },
+        }),
+      });
+    </script>
+  </body>
+</html>

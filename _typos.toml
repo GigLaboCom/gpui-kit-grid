@@ -1,0 +1,22 @@
+[default]
+extend-ignore-re = [
+    '\\u\{[0-9A-Fa-f]+\}',
+    # The desk example's instrument table: real tickers and company names
+    # (ACN, BA, Synopsys, DuPont) are not words.
+    'instrument\("[^"]*", "[^"]*"',
+    # The wiki example's languages: Wikimedia's codes (als, ba, fo) with
+    # their English names are not words.
+    '\("[a-z-]+", "[A-Z][^"]*"\),',
+]
+
+[default.extend-words]
+# Add a word here only with a comment that says why it is not a typo
+# (same rule as gpui-kit `_typos.toml`).
+
+[default.extend-identifiers]
+# The orbit example's data source, celestrak.org: a name, spelled so.
+CelesTrak = "CelesTrak"
+
+[files]
+# Build output; typos skips it through .gitignore only inside a git checkout.
+extend-exclude = ["target/"]

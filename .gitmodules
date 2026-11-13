@@ -1,0 +1,4 @@
+[submodule "custom-docs"]
+	path = custom-docs
+	url = https://github.com/GigLaboCom/gpui-kit-grid-docs.git
+	update = none
