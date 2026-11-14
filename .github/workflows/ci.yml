@@ -10,6 +10,9 @@
 # - lint, docs, the feature variants of the tests and the doc tests run on
 #   Linux; macOS and Windows run the tests once: macOS runners are few, and
 #   what does not depend on the platform needs none.
+# - a pull request or push that changes only the site (site/, docker/site/,
+#   site.yml) or Markdown at the root skips everything but `checks` (the
+#   `changes` job decides); site.yml checks the site itself.
 name: CI
 on:
   pull_request:
@@ -37,6 +40,45 @@ env:
 # that changes them recompiles GPUI from scratch. The grid's own `decimal` and
 # `derive` features do not reach gpui-kit.
 jobs:
+  # Whether the change touches what the jobs below build: anything but the
+  # site (site/, docker/site/, site.yml, which site.yml checks) and the
+  # Markdown at the root. A pull request or push that changes only those
+  # skips lint, docs, the web check, the tests and the examples; `checks`
+  # (typos, format) runs always, and a crate tag always runs everything.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            base=$PR_BASE
+          elif [ "$REF_TYPE" = tag ] || [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          else
+            base=$BEFORE
+          fi
+          changed=$(git diff --name-only "$base" "$HEAD")
+          echo "$changed"
+          if echo "$changed" | grep -qvE '^(site/|docker/site/|\.github/workflows/site\.yml$|[^/]+\.md$)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Only the site or root Markdown changed: lint, docs, web, tests and examples are skipped."
+          fi
+
   checks:
     name: Checks
     runs-on: ubuntu-latest
@@ -69,6 +111,8 @@ jobs:
   # compiled by the macOS tests, not linted here.
   lint:
     name: Lint
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,6 +134,8 @@ jobs:
 
   docs:
     name: Docs and the library alone
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -109,6 +155,8 @@ jobs:
 
   wasm:
     name: Web
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       # gpui-pre 0.3.8 always enables gpui_web's `multithreaded` feature, whose
@@ -144,6 +192,8 @@ jobs:
         run: cargo clippy --workspace --target wasm32-unknown-unknown --locked -- --deny warnings
 
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     # Named after the target and runner only, so that the required checks
     # keep their names whatever else the matrix carries.
     name: Test (${{ matrix.target }}, ${{ matrix.run_on }})
@@ -191,6 +241,8 @@ jobs:
 
   examples:
     name: Examples (release)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
