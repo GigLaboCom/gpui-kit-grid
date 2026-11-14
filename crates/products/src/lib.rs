@@ -17,6 +17,11 @@
 //! the site's. A page embedded in another site hides the button
 //! ([`set_hidden`]).
 //!
+//! `GIGLABO_PRODUCTS=off` in the environment hides it in any native example
+//! (stills and recordings without it); the variable is read once, and only
+//! the exact value `off` counts. A web page has no environment: there the
+//! button follows [`set_hidden`] alone.
+//!
 //! The examples are in English only, and so is this.
 
 use std::sync::{Arc, OnceLock};
@@ -194,15 +199,36 @@ pub fn set_hidden(cx: &mut App, hidden: bool) {
     cx.set_global(Hidden(hidden));
 }
 
-/// Whether [`ProductsButton`] is hidden ([`set_hidden`]).
+/// Whether [`ProductsButton`] is hidden: by [`set_hidden`], or by
+/// `GIGLABO_PRODUCTS=off` in the environment, which `set_hidden(cx, false)`
+/// does not override.
 pub fn is_hidden(cx: &App) -> bool {
-    cx.try_global::<Hidden>().is_some_and(|hidden| hidden.0)
+    hidden_by_environment() || cx.try_global::<Hidden>().is_some_and(|hidden| hidden.0)
+}
+
+/// The environment variable that hides [`ProductsButton`] when it is `off`.
+const ENVIRONMENT_VARIABLE: &str = "GIGLABO_PRODUCTS";
+
+/// Whether the environment hides [`ProductsButton`], read once: the button
+/// renders every frame. On the web `std::env::var` finds nothing, so a page
+/// keeps the button unless it calls [`set_hidden`].
+fn hidden_by_environment() -> bool {
+    static HIDDEN: OnceLock<bool> = OnceLock::new();
+    *HIDDEN.get_or_init(|| hides(std::env::var(ENVIRONMENT_VARIABLE).ok().as_deref()))
+}
+
+/// Whether a value of `GIGLABO_PRODUCTS` hides the button: only exactly
+/// `off`, the one spelling the tooling writes. `OFF`, ` off `, any other
+/// value, a value that is not Unicode and no variable at all leave the
+/// button shown.
+fn hides(value: Option<&str>) -> bool {
+    value == Some("off")
 }
 
 /// "More from GigLabo" with the studio's logo, a button in the theme's
 /// primary colour (outlined, so it never outweighs an example's own
 /// primary action) that opens the products ([`open_products`]); nothing
-/// when hidden ([`set_hidden`]). Small unless sized otherwise, or by the
+/// when hidden ([`is_hidden`]). Small unless sized otherwise, or by the
 /// `Toolbar` it is a child of.
 #[derive(IntoElement)]
 pub struct ProductsButton {
@@ -460,6 +486,15 @@ mod tests {
             "giglabo.com/agency"
         );
         assert_eq!(products().studio.address, "giglabo.com/agency");
+    }
+
+    #[test]
+    fn test_only_off_hides() {
+        assert!(!hides(None));
+        assert!(hides(Some("off")));
+        for value in ["", "on", "0", "false", "OFF", "Off", " off ", "off\n"] {
+            assert!(!hides(Some(value)), "{value:?} hides the button");
+        }
     }
 
     #[test]

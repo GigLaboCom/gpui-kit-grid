@@ -167,8 +167,9 @@ bun test --cwd site
 # in the private docs repository, assets/products/README.md. Public products only.
 # The examples show the same list (crates/products, package giglabo-products:
 # products.json and 128 px PNG icons/), a "More from GigLabo" button in an app
-# bar and the dialog it opens, hidden in an embedded page; a change to the
-# site's list is a change there too.
+# bar and the dialog it opens, hidden in an embedded page and, in any native
+# example, by GIGLABO_PRODUCTS=off (exactly `off`; stills without the button);
+# a change to the site's list is a change there too.
 
 # The site as a container image (nginx, docker/site/), from the site/dist
 # CI assembles (the pages, the demos under /demo/, rustdoc under /api/): the
