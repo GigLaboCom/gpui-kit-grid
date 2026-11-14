@@ -1,0 +1,108 @@
+---
+// Cards for the other GigLabo products (src/data/products.ts): icon, name,
+// one line, a link to the product's own site. `compact` is the strip on the
+// home page; the full grid is the Products page. Plain links: no tracking
+// parameters, nothing loaded from the other sites.
+import { Image } from 'astro:assets';
+import { products, type Group } from '../data/products';
+
+interface Props {
+	compact?: boolean;
+	/** Only this group (the Products page renders one grid per group). */
+	group?: Group;
+}
+const { compact = false, group } = Astro.props;
+const shown = group ? products.filter((p) => p.group === group) : products;
+---
+
+<ul class:list={['products', { compact }]} role="list">
+	{
+		shown.map((p) => (
+			<li>
+				<a class="card" href={p.url} rel="noopener">
+					<Image src={p.icon} alt="" width={compact ? 40 : 56} height={compact ? 40 : 56} class:list={['icon', { plate: p.plate }]} />
+					<span class="text">
+						<span class="name">{p.name}</span>
+						{!compact && <span class="tagline">{p.tagline}</span>}
+						<span class="host">{new URL(p.url).host}</span>
+					</span>
+				</a>
+			</li>
+		))
+	}
+</ul>
+
+<style>
+	.products {
+		list-style: none;
+		padding: 0;
+		margin: 1.5rem 0 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+		gap: 1rem;
+	}
+	.products.compact {
+		grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+		gap: 0.75rem;
+	}
+	.products li {
+		margin: 0;
+	}
+	.card {
+		display: flex;
+		gap: 0.9rem;
+		align-items: flex-start;
+		height: 100%;
+		padding: 1rem;
+		border: 1px solid var(--sl-color-hairline);
+		border-radius: 0.6rem;
+		background: var(--sl-color-bg-nav);
+		color: var(--sl-color-white);
+		text-decoration: none;
+		transition: border-color 0.15s, transform 0.15s;
+	}
+	.compact .card {
+		align-items: center;
+		padding: 0.7rem 0.8rem;
+	}
+	.card:hover,
+	.card:focus-visible {
+		border-color: var(--sl-color-accent);
+		transform: translateY(-1px);
+	}
+	.icon {
+		flex-shrink: 0;
+		border-radius: 0.6rem;
+	}
+	.plate {
+		background: #fff;
+		padding: 6px;
+	}
+	.text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		min-width: 0;
+	}
+	.name {
+		font-weight: 600;
+		font-size: var(--sl-text-base);
+	}
+	.tagline {
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+		line-height: 1.45;
+	}
+	.host {
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-xs);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.card {
+			transition: none;
+		}
+		.card:hover {
+			transform: none;
+		}
+	}
+</style>

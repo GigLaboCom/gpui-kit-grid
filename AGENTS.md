@@ -161,6 +161,11 @@ bun test --cwd site
 # another copy of the image. Anything new stored in the browser needs a row in
 # the Privacy page's table (site/src/content/docs/privacy.md).
 
+# The other GigLabo products ("More from GigLabo", /products/, second in the
+# sidebar, a strip on the home page, a footer link): site/src/data/products.ts
+# and site/src/assets/products/; originals and sources of every icon and line
+# in the private docs repository, assets/products/README.md. Public products only.
+
 # The site as a container image (nginx, docker/site/), from the site/dist
 # CI assembles (the pages, the demos under /demo/, rustdoc under /api/): the
 # context, the image, then a read-only run against the site's behavior
