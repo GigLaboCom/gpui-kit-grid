@@ -5,6 +5,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Sizable as _,
@@ -494,6 +495,7 @@ impl Desk {
                         .child(message.text.clone()),
                 )
             })
+            .child(ProductsButton::new())
     }
 
     fn render_help(&self, cx: &App) -> impl IntoElement + use<> {

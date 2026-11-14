@@ -2360,6 +2360,7 @@ version = "0.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid",
  "gpui-kit-grid-web-shell",
@@ -2376,6 +2377,7 @@ version = "0.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid",
  "gpui-kit-grid-web-shell",
@@ -2410,6 +2412,7 @@ version = "0.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid",
  "gpui-kit-grid-web-shell",
@@ -2427,6 +2430,7 @@ version = "0.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid",
  "gpui-kit-grid-feed",
@@ -2462,6 +2466,7 @@ version = "0.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid",
  "gpui-kit-grid-web-shell",
@@ -2481,6 +2486,7 @@ version = "0.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid",
  "gpui-kit-grid-web-shell",
@@ -2499,6 +2505,7 @@ version = "0.0.0"
 dependencies = [
  "async-channel",
  "fastrand",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid",
  "gpui-kit-grid-web-shell",

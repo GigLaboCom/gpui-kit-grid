@@ -5,13 +5,14 @@
 //! through them left to right and then into the grid, past the checkboxes
 //! and buttons of its rows (they take no Tab stop).
 
+use giglabo_products::ProductsButton;
 use gpui_kit::component::{
     ActiveTheme as _, Disableable as _, Selectable as _, Size, Theme, ThemeMode,
     button::{Button, ButtonGroup, Toggle},
     separator::Separator,
     toolbar::{Toolbar, ToolbarGroup},
 };
-use gpui_kit::{Context, IntoElement, Styled as _};
+use gpui_kit::{Context, IntoElement, Styled as _, div};
 use gpui_kit_grid::{HoldReorder, LiveGridDelegate, LiveGridState, LiveReorder, ManualReorder};
 
 use crate::{Export, KEY_CONTEXT, NewOrder, Root, e2e::RecordBounds as _};
@@ -178,5 +179,7 @@ impl Root {
                             }),
                     ),
             )
+            .content(div().flex_1())
+            .child(ProductsButton::new())
     }
 }

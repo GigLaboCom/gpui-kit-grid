@@ -56,6 +56,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Selectable as _, Sizable as _, Size,
@@ -423,6 +424,7 @@ impl Screen {
                         .child(labelled("Ask", ask, theme.danger, theme.muted_foreground)),
                 )
             })
+            .child(ProductsButton::new())
     }
 
     /// The button of `command`.

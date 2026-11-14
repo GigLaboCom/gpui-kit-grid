@@ -55,6 +55,7 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Size,
@@ -544,8 +545,8 @@ impl Wire {
         self.show(Section::Watchlist, window, cx);
     }
 
-    /// The mark, the SIMULATED badge, the tabs, the search box and the
-    /// clock.
+    /// The mark, the SIMULATED badge, the tabs, the search box, the clock
+    /// and "More from GigLabo".
     fn render_app_bar(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
         h_flex()
@@ -600,6 +601,7 @@ impl Wire {
                     .font_features(ui::tabular_figures())
                     .child(SharedString::from(format!("{} UTC", self.status.clock))),
             )
+            .child(ProductsButton::new())
     }
 
     /// The overview, the news monitor, and the story over the mentioned

@@ -13,6 +13,7 @@
 //! the bar. The filter is last, as the toolbar asks of text inputs (they
 //! keep the arrow keys for the caret).
 
+use giglabo_products::ProductsButton;
 use gpui_kit::component::{
     ActiveTheme as _, Disableable as _, Icon, IconName, Selectable as _, Sizable as _, Size, Theme,
     ThemeMode,
@@ -248,6 +249,7 @@ impl Root {
                     .aria_label("Filter trades")
                     .w_48(),
             )
+            .child(ProductsButton::new())
     }
 
     /// Groups ▾: the commands over every group, sent to the grid as its

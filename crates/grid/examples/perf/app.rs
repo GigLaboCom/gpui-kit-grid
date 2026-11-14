@@ -5,6 +5,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Size,
@@ -370,7 +371,8 @@ impl Perf {
         self.set_depth(ExpandDepth::Levels(0), cx);
     }
 
-    /// The mark, the arrangement tabs, the search box and the pause button.
+    /// The mark, the arrangement tabs, the search box, the pause button and
+    /// "More from GigLabo".
     fn render_app_bar(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
         let selected = Arrangement::ALL
@@ -450,6 +452,7 @@ impl Perf {
                     )
                     .on_click(cx.listener(|perf, _, _, cx| perf.toggle_paused(cx))),
             )
+            .child(ProductsButton::new())
     }
 
     fn render_processes(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {

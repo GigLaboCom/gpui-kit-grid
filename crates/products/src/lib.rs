@@ -23,7 +23,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
-    ActiveTheme as _, Sizable as _, WindowExt as _,
+    ActiveTheme as _, Sizable, Size, WindowExt as _,
     button::{Button, ButtonVariants as _},
 };
 use gpui_kit::{
@@ -199,16 +199,32 @@ pub fn is_hidden(cx: &App) -> bool {
     cx.try_global::<Hidden>().is_some_and(|hidden| hidden.0)
 }
 
-/// "More from GigLabo" with the studio's logo, a small button in the
-/// theme's primary colour (outlined, so it never outweighs an example's
-/// own primary action) that opens the products ([`open_products`]);
-/// nothing when hidden ([`set_hidden`]).
-#[derive(IntoElement, Default)]
-pub struct ProductsButton;
+/// "More from GigLabo" with the studio's logo, a button in the theme's
+/// primary colour (outlined, so it never outweighs an example's own
+/// primary action) that opens the products ([`open_products`]); nothing
+/// when hidden ([`set_hidden`]). Small unless sized otherwise, or by the
+/// `Toolbar` it is a child of.
+#[derive(IntoElement)]
+pub struct ProductsButton {
+    size: Size,
+}
 
 impl ProductsButton {
     pub fn new() -> Self {
-        Self
+        Self { size: Size::Small }
+    }
+}
+
+impl Default for ProductsButton {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Sizable for ProductsButton {
+    fn with_size(mut self, size: impl Into<Size>) -> Self {
+        self.size = size.into();
+        self
     }
 }
 
@@ -218,7 +234,7 @@ impl RenderOnce for ProductsButton {
         div().flex_none().when(shown, |this| {
             this.child(
                 Button::new("giglabo-products")
-                    .small()
+                    .with_size(self.size)
                     .primary()
                     .outline()
                     .child(

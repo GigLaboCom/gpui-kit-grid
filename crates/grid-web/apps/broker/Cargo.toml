@@ -24,6 +24,7 @@ test-support = []
 # from `crates/grid/examples/`.
 async-channel.workspace = true
 fastrand.workspace = true
+giglabo-products.workspace = true
 gpui-kit.workspace = true
 gpui-kit-grid.workspace = true
 gpui-kit-grid-web-shell.workspace = true
@@ -35,7 +36,7 @@ web-time.workspace = true
 
 # Used by the code included by path, where cargo-machete does not look.
 [package.metadata.cargo-machete]
-ignored = ["async-channel", "fastrand", "gpui-kit-grid", "log", "parking_lot", "web-time"]
+ignored = ["async-channel", "fastrand", "giglabo-products", "gpui-kit-grid", "log", "parking_lot", "web-time"]
 
 [lints]
 workspace = true

@@ -5,6 +5,7 @@
 
 use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
 
+use giglabo_products::ProductsButton;
 use gpui_kit::component::{ActiveTheme as _, Sizable as _, Size};
 use gpui_kit::{
     App, AppContext as _, Context, Entity, FontFeatures, IntoElement, ParentElement as _, Render,
@@ -298,7 +299,9 @@ impl Render for Quotes {
                             .text_sm()
                             .text_color(theme.muted_foreground)
                             .child(self.status_line()),
-                    ),
+                    )
+                    .child(div().flex_1())
+                    .child(ProductsButton::new()),
             )
             .child(
                 div()

@@ -6,6 +6,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Size,
@@ -536,8 +537,8 @@ impl Broker {
         self.show(BottomTab::Movers, window, cx);
     }
 
-    /// The mark, the account's name, the search box, the price colours and
-    /// the theme.
+    /// The mark, the account's name, the search box, the price colours,
+    /// the theme and "More from GigLabo".
     fn render_top_bar(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
         let dark = theme.is_dark();
@@ -638,6 +639,7 @@ impl Broker {
                     .tooltip(if dark { "Light theme" } else { "Dark theme" })
                     .on_click(|_, _, cx| Self::toggle_theme(cx)),
             )
+            .child(ProductsButton::new())
     }
 
     fn render_watchlist(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
