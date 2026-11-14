@@ -156,6 +156,7 @@ Requires Rust 1.95 (`rust-toolchain.toml`). gpui-kit comes from GitHub, pinned t
 | `crates/grid-macros` | `#[derive(GridColumns)]`, behind the `derive` feature |
 | `crates/grid-web` | The browser pages, a separate workspace built for `wasm32-unknown-unknown` |
 | `crates/grid-feed`, `crates/grid-gateway` | The quotes feed protocol and its WebSocket gateway |
+| `crates/products` | The examples' "More from GigLabo" button and dialog (`giglabo-products`, not released) |
 | `site` | The documentation site |
 | `script`, `docker/linux` | Gate checks, data downloads, the benchmark charts; Linux builds and the end-to-end suite |
 
