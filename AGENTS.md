@@ -91,6 +91,8 @@ Layout:
   applications (`crates/grid/examples`: blotter, editable orders, benchmarks)
 - `crates/grid-macros` - `#[derive(GridColumns)]` (the grid's `derive` feature)
 - `crates/grid-feed`, `crates/grid-gateway` - the web example's quotes feed
+- `crates/products` - the examples' "More from GigLabo" button and dialog
+  (package `giglabo-products`, not released)
 - `crates/grid-web` - the examples in the browser, a separate workspace
 
 ## Common Commands
