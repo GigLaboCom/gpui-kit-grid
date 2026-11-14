@@ -1,5 +1,11 @@
 [workspace]
-members = ["crates/grid", "crates/grid-feed", "crates/grid-gateway", "crates/grid-macros"]
+members = [
+    "crates/grid",
+    "crates/grid-feed",
+    "crates/grid-gateway",
+    "crates/grid-macros",
+    "crates/products",
+]
 resolver = "2"
 
 [workspace.package]
@@ -26,6 +32,8 @@ gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "146ab45ac0d0
 gpui-kit-grid = { path = "crates/grid" }
 gpui-kit-grid-feed = { path = "crates/grid-feed" }
 gpui-kit-grid-macros = { path = "crates/grid-macros" }
+# The examples' "More from GigLabo" button and dialog.
+giglabo-products = { path = "crates/products" }
 
 # `CellValue::Timestamp`. Same requirement as gpui-kit `crates/base` and
 # `crates/component`. Types and UTC text only: without the `clock` feature

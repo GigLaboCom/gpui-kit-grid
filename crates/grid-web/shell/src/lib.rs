@@ -296,6 +296,8 @@ pub fn run(query: &str) {
     let application = Application::with_platform(Rc::new(platform))
         .with_assets(icons)
         .run_embedded(move |cx| {
+            // In another site's page, no links to GigLabo's other products.
+            giglabo_products::set_hidden(cx, embedded);
             with_page_mut(|page| page.setup(&params, cx));
             gpui_kit::open_window(WindowOptions::default(), cx, |window, cx| {
                 cx.new(|cx| Shell::new(embedded, window, cx))

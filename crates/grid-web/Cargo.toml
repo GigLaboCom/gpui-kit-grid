@@ -34,6 +34,8 @@ gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "146ab45ac0d0
 gpui-kit-grid = { path = "../grid" }
 gpui-kit-grid-feed = { path = "../grid-feed" }
 gpui-kit-grid-web-shell = { path = "shell" }
+# The examples' "More from GigLabo" button and dialog.
+giglabo-products = { path = "../products" }
 js-sys = "0.3"
 log = "0.4"
 parking_lot = "0.12.5"

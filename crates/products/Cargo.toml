@@ -1,0 +1,22 @@
+[package]
+name = "giglabo-products"
+description = "The other GigLabo products in the examples: an app bar button and the dialog it opens."
+# The examples' only, never released with the library (as `crates/grid-web`).
+version = "0.0.0"
+keywords = ["gpui", "examples"]
+categories = ["gui"]
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+gpui-kit.workspace = true
+# The list, `products.json`, read once.
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

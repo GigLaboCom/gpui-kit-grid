@@ -2213,6 +2213,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "giglabo-products"
+version = "0.0.0"
+dependencies = [
+ "gpui-kit",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "gimli"
 version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2443,6 +2452,7 @@ dependencies = [
  "chrono",
  "fastrand",
  "flate2",
+ "giglabo-products",
  "gpui-kit",
  "gpui-kit-grid-feed",
  "gpui-kit-grid-macros",

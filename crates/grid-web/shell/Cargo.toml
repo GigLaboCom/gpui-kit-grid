@@ -16,6 +16,8 @@ homepage.workspace = true
 async-channel.workspace = true
 # The feed's reconnect jitter.
 fastrand.workspace = true
+# Hidden in another site's page (`?embed`).
+giglabo-products.workspace = true
 gpui-kit.workspace = true
 gpui-kit-grid.workspace = true
 # The gateway's protocol and the client's state machine (`?feed=`).

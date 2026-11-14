@@ -1,0 +1,54 @@
+{
+  "products": [
+    {
+      "id": "smbact",
+      "group": "desktop",
+      "name": "SMBAct",
+      "url": "https://smbact.com",
+      "tagline": "A cross-platform window manager and switcher: size, position and fuzzy search of windows with hotkeys."
+    },
+    {
+      "id": "wipemark",
+      "group": "desktop",
+      "name": "Wipemark",
+      "url": "https://github.com/GigLaboCom/wipemark-app/releases/latest",
+      "tagline": "Take AI provenance marks out of your own text and pictures, on your own machine."
+    },
+    {
+      "id": "mnemovi",
+      "group": "desktop",
+      "name": "MnemoVi",
+      "url": "https://mnemovi.com",
+      "tagline": "Turns your videos into a knowledge base you can search: everything said and everything shown on screen. Nothing leaves your device."
+    },
+    {
+      "id": "heretic-lazy-shot",
+      "group": "desktop",
+      "name": "Heretic Lazy Shot",
+      "url": "https://giglabo.com/heretic/applications/heretic-lazy-shot",
+      "tagline": "Capture, annotate and beautify screenshots, with an MCP server built in so AI agents can drive it."
+    },
+    {
+      "id": "watchword",
+      "group": "ai",
+      "name": "Watchword",
+      "url": "https://giglabo.com/heretic/tools/watchword",
+      "tagline": "An open-source MCP server: shared memory for every AI agent, text, prompts and files under memorable keywords.",
+      "plate": true
+    },
+    {
+      "id": "moat-atlas",
+      "group": "web",
+      "name": "Moat Atlas",
+      "url": "https://moa.giglabo.com",
+      "tagline": "The geology of defensibility: an interactive atlas of 35 competitive moats."
+    }
+  ],
+  "studio": {
+    "id": "giglabo",
+    "name": "GigLabo",
+    "url": "https://giglabo.com/agency",
+    "tagline": "The studio: custom software, web apps and AI solutions. Need something built? Talk to us.",
+    "plate": true
+  }
+}

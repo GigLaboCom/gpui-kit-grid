@@ -58,6 +58,16 @@ body {
   font-weight: 600;
 }
 
+/* GigLabo's other products, after the licences, in the accent colour as
+   the examples' own "More from GigLabo" button. */
+#apps a.products {
+  color: var(--accent);
+}
+
+#apps a.products:hover {
+  text-decoration: underline;
+}
+
 /* The licences, after the examples, and the page's notice at the right. */
 #apps .licenses {
   padding-left: 16px;
