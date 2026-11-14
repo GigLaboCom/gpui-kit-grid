@@ -1,0 +1,57 @@
+---
+// GigLabo, the studio behind the site, as on Moat Atlas's "Who made this"
+// page: a wide card above the products (src/content/docs/products.mdx).
+import { Image } from 'astro:assets';
+import logo from '../assets/products/giglabo.png';
+---
+
+<a class="studio" href="https://giglabo.com/agency" rel="noopener">
+	<Image src={logo} alt="" width={64} height={64} class="logo" />
+	<span class="text">
+		<span class="name">GigLabo</span>
+		<span class="line">The studio: custom software, web apps and AI solutions. Need something built? Talk to us.</span>
+		<span class="host">giglabo.com/agency</span>
+	</span>
+</a>
+
+<style>
+	.studio {
+		display: flex;
+		align-items: center;
+		gap: 1.1rem;
+		margin-top: 1.5rem;
+		padding: 1.1rem 1.25rem;
+		border: 1px solid var(--sl-color-accent);
+		border-radius: 0.6rem;
+		background: var(--sl-color-accent-low);
+		color: var(--sl-color-white);
+		text-decoration: none;
+	}
+	.studio:hover,
+	.studio:focus-visible {
+		border-color: var(--sl-color-accent-high);
+	}
+	.logo {
+		flex-shrink: 0;
+		border-radius: 0.6rem;
+		background: #fff;
+		padding: 6px;
+	}
+	.text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+	}
+	.name {
+		font-weight: 600;
+		font-size: var(--sl-text-lg);
+	}
+	.line {
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+	}
+	.host {
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-xs);
+	}
+</style>

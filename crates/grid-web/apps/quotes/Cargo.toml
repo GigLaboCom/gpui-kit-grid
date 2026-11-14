@@ -24,6 +24,7 @@ test-support = []
 # from `crates/grid/examples/`.
 async-channel.workspace = true
 fastrand.workspace = true
+giglabo-products.workspace = true
 gpui-kit.workspace = true
 gpui-kit-grid.workspace = true
 # The gateway's quote records, which the quotes are made from (`?feed=`).

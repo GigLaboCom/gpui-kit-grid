@@ -14,6 +14,7 @@ use std::{
     time::Duration,
 };
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{actions::Confirm, h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Sizable as _, Size,
@@ -449,8 +450,8 @@ impl Ops {
     }
 
     /// The mark, the SIMULATED badge, the incident banner, the storm
-    /// button and the simulated clock; a `narrow` window keeps the mark,
-    /// the banner and the button.
+    /// button, the simulated clock and "More from GigLabo"; a `narrow`
+    /// window keeps the mark, the banner and the storm button.
     fn render_app_bar(&self, narrow: bool, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
         let phase = self.status.phase;
@@ -511,6 +512,7 @@ impl Ops {
                         .text_color(theme.muted_foreground)
                         .child(SharedString::from(format!("{} sim", self.control.clock()))),
                 )
+                .child(ProductsButton::new())
             })
     }
 

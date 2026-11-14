@@ -53,6 +53,8 @@ export default defineConfig({
       routeMiddleware: './src/routeData.ts',
       sidebar: [
         { slug: 'start', label: 'Start' },
+        // Kept near the top so the other products are seen (src/data/products.ts).
+        { slug: 'products', label: 'More from GigLabo', badge: { text: 'Products', variant: 'tip' } },
         {
           label: 'Concepts',
           items: [

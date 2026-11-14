@@ -39,6 +39,8 @@ web-time.workspace = true
 
 [dev-dependencies]
 fastrand.workspace = true
+# The examples' "More from GigLabo" button in their app bars.
+giglabo-products.workspace = true
 # The cookbook example's WebSocket recipe reads the quotes gateway's feed.
 gpui-kit-grid-feed.workspace = true
 # The ships example's native transport: gzip, TLS, the root certificates and

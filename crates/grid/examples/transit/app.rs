@@ -8,6 +8,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Size,
@@ -146,6 +147,10 @@ fn key_bindings() -> Vec<KeyBinding> {
 pub const FETCH_SCRIPT: &str = "python3 -I script/fetch-transit-data";
 /// Below this width the map goes above the table.
 const NARROW: Pixels = px(900.);
+/// Below this width the app bar leaves the subtitle out, so the keys and
+/// "More from GigLabo" fit beside the clock (the city tabs and the clock's
+/// tag still say which city and whether it is live).
+const ROOMY: Pixels = px(1360.);
 /// The station names the board's search box suggests at most.
 const SUGGESTIONS: usize = 6;
 
@@ -764,8 +769,14 @@ impl Transit {
     }
 
     /// The mark, the city and its option, the clock and its warp (or the
-    /// feed), and the keys.
-    fn render_app_bar(&self, narrow: bool, cx: &mut Context<Self>) -> impl IntoElement + use<> {
+    /// feed), the keys and "More from GigLabo"; the subtitle only when the
+    /// bar is `roomy`.
+    fn render_app_bar(
+        &self,
+        narrow: bool,
+        roomy: bool,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
         let theme = cx.theme();
         let warp = self.control.warp();
         let clock = self.zone().format(self.control.now());
@@ -828,7 +839,7 @@ impl Transit {
                             .text_color(theme.foreground)
                             .child("transit"),
                     )
-                    .when(!narrow, |mark| {
+                    .when(roomy, |mark| {
                         mark.child(div().text_color(theme.muted_foreground).child(subtitle))
                     }),
             )
@@ -891,6 +902,7 @@ impl Transit {
                         .children(hints),
                 )
             })
+            .child(ProductsButton::new())
     }
 
     /// The search box, the grouping and the warp.
@@ -1616,7 +1628,7 @@ impl Render for Transit {
             .text_color(foreground)
             .font_family(family)
             .text_size(text_size)
-            .child(self.render_app_bar(narrow, cx))
+            .child(self.render_app_bar(narrow, width >= ROOMY, cx))
             .child(main)
             .child(self.render_status(narrow, cx))
     }

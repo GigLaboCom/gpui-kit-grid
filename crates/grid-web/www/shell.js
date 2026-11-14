@@ -216,9 +216,14 @@ async function fetchModule(app) {
   return new Response(body, { headers: { 'Content-Type': 'application/wasm' } });
 }
 
+// GigLabo's other products: the site's page, from any copy of the pages.
+const PRODUCTS = 'https://gkg.giglabo.com/products/';
+
 // The examples (`pkg/apps.json`, which the build writes), each a link to
 // its page, `app` marked as the one shown; then the licences
-// (`licenses/`, which the build writes) and the page's `notice`.
+// (`licenses/`, which the build writes), GigLabo's other products (the
+// site's page, in a new tab, as the examples' own "More from GigLabo"
+// button opens them) and the page's `notice`.
 async function showApps(app, notice) {
   const nav = document.getElementById('apps');
   const response = await fetch(site('pkg/apps.json'));
@@ -235,6 +240,13 @@ async function showApps(app, notice) {
   licenses.className = 'licenses';
   licenses.textContent = 'Licenses';
   nav.append(licenses);
+  const products = document.createElement('a');
+  products.href = PRODUCTS;
+  products.className = 'products';
+  products.target = '_blank';
+  products.rel = 'noopener';
+  products.textContent = 'More from GigLabo';
+  nav.append(products);
   if (notice) {
     const label = document.createElement('span');
     label.className = 'notice';

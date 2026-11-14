@@ -14,6 +14,7 @@
 
 use std::{any::Any, rc::Rc, sync::Arc, time::Duration};
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Disableable as _, Icon, IconName, Sizable as _, Size,
@@ -762,7 +763,7 @@ impl Wiki {
         }
     }
 
-    /// The mark, the mode and the keys.
+    /// The mark, the mode, the keys and "More from GigLabo".
     fn render_app_bar(&self, narrow: bool, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
@@ -821,6 +822,7 @@ impl Wiki {
                         .children(hints),
                 )
             })
+            .child(ProductsButton::new())
     }
 
     /// Start, pause or resume; the replay; the search; the arrangement and

@@ -43,6 +43,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use giglabo_products::ProductsButton;
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, IndexPath, Sizable as _, Size, Theme, ThemeMode,
     button::{Button, Toggle},
@@ -457,6 +458,7 @@ impl Root {
                     .aria_label("Filter positions")
                     .w_48(),
             )
+            .child(ProductsButton::new())
     }
 
     fn render_status(&self) -> impl IntoElement + use<> {

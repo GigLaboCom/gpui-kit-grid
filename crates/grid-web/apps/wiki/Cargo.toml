@@ -24,6 +24,7 @@ test-support = []
 async-channel.workspace = true
 # The trading module's dependency, and the reconnect jitter.
 fastrand.workspace = true
+giglabo-products.workspace = true
 gpui-kit.workspace = true
 gpui-kit-grid.workspace = true
 gpui-kit-grid-web-shell.workspace = true
@@ -43,7 +44,7 @@ web-time.workspace = true
 
 # Used by the code included by path, where cargo-machete does not look.
 [package.metadata.cargo-machete]
-ignored = ["fastrand", "gpui-kit-grid", "log", "parking_lot", "serde", "web-time"]
+ignored = ["fastrand", "giglabo-products", "gpui-kit-grid", "log", "parking_lot", "serde", "web-time"]
 
 [lints]
 workspace = true

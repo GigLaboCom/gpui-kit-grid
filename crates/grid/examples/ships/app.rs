@@ -11,6 +11,7 @@ use std::{
     time::Duration,
 };
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Size,
@@ -559,7 +560,8 @@ impl Ships {
         }
     }
 
-    /// The mark, the connection, the clock and the keys.
+    /// The mark, the connection, the clock, the keys and "More from
+    /// GigLabo".
     fn render_app_bar(&self, room: Room, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let narrow = room == Room::Narrow;
         let theme = cx.theme();
@@ -626,6 +628,7 @@ impl Ships {
                         .children(hints),
                 )
             })
+            .child(ProductsButton::new())
     }
 
     /// The search box, the grouping and the moving filter.

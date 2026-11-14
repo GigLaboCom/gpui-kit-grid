@@ -6,6 +6,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use giglabo_products::ProductsButton;
 use gpui_kit::base::{h_flex, v_flex};
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Size,
@@ -509,7 +510,8 @@ impl Orbit {
         self.search.update(cx, |input, cx| input.focus(window, cx));
     }
 
-    /// The mark, the clock and its warp, the observer and the keys.
+    /// The mark, the clock and its warp, the observer, the keys and "More
+    /// from GigLabo".
     fn render_app_bar(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
         let warp = self.control.warp();
@@ -584,6 +586,7 @@ impl Orbit {
                     .text_color(theme.muted_foreground)
                     .children(hints),
             )
+            .child(ProductsButton::new())
     }
 
     /// The search box, the horizon filter, the arrangement and the warp.
