@@ -2,6 +2,10 @@
 
 A live data grid for [gpui-kit](https://gpui-kit.com) (GPUI) applications: hundreds of thousands of rows, thousands of updates per second from any thread, change highlight, sorting, filtering, grouping and trees in the background.
 
+[![The quotes example: simulated stock quotes grouped by sector, each changed cell flashing green or red with an arrow, and live totals on the sector rows](.github/assets/quotes.gif)](https://gkg.giglabo.com/demo/quotes/)
+
+The quotes example: every change highlighted as it arrives, live totals per sector. [Run it in the browser](https://gkg.giglabo.com/demo/quotes/).
+
 It is a separate crate on top of gpui-kit. Rows are addressed by key and written from any thread; a background ingest collapses updates by key and publishes snapshots; the order on screen is rebuilt in the background; one custom element paints the visible cells. The ideas come from the LiveGrid grid (WinForms), rethought for GPUI.
 
 **Documentation: https://gkg.giglabo.com/** · [Getting started](https://gkg.giglabo.com/start/) · [Examples](https://gkg.giglabo.com/examples/) · [Live demos](https://gkg.giglabo.com/demo/) · [API](https://gkg.giglabo.com/api/)
