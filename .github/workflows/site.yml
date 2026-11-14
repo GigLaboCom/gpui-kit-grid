@@ -95,13 +95,31 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: gpui-kit-grid
+      # The demos (wasm modules, glue, the data and notices they serve) and
+      # rustdoc depend only on the crates, the toolchain and the demos' data,
+      # not on the site: a change to site/ alone takes them from this cache
+      # and skips Rust, wasm and every download below. Any change under
+      # crates/ (or to the inputs listed) builds them again.
+      - name: Restore the demos and the API reference
+        id: demos
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            gpui-kit-grid/crates/grid-web/www/pkg
+            gpui-kit-grid/crates/grid-web/www/data
+            gpui-kit-grid/crates/grid-web/www/licenses
+            gpui-kit-grid/crates/grid-web/www/fonts
+            gpui-kit-grid/target/doc
+          key: site-demos-${{ env.RECORDINGS_RELEASE }}-${{ env.BINARYEN_VERSION }}-${{ hashFiles('gpui-kit-grid/crates/**', 'gpui-kit-grid/Cargo.lock', 'gpui-kit-grid/Cargo.toml', 'gpui-kit-grid/rust-toolchain.toml', 'gpui-kit-grid/script/fetch-example-fonts', 'gpui-kit-grid/script/fetch-transit-data', 'gpui-kit-grid/script/site-recordings.sha256') }}
       - name: The pinned gpui-kit revision
+        if: steps.demos.outputs.cache-hit != 'true'
         id: gpui-kit
         run: |
           rev=$(sed -n 's/^gpui-kit = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)
           test -n "$rev"
           echo "rev=$rev" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
+        if: steps.demos.outputs.cache-hit != 'true'
         with:
           repository: ${{ env.GPUI_KIT_REPOSITORY }}
           ref: ${{ steps.gpui-kit.outputs.rev }}
@@ -111,6 +129,7 @@ jobs:
       # `main` saves the caches (the web workspace's target and the
       # registry); pull requests restore the closest.
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        if: steps.demos.outputs.cache-hit != 'true'
         with:
           rust-src-dir: gpui-kit-grid
           target: wasm32-unknown-unknown
@@ -119,12 +138,15 @@ jobs:
             gpui-kit-grid -> target
           cache-save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: rui314/setup-mold@v1
+        if: steps.demos.outputs.cache-hit != 'true'
       - uses: taiki-e/install-action@v2
+        if: steps.demos.outputs.cache-hit != 'true'
         with:
           # The glue's generator at the version `crates/grid-web/Cargo.toml`
           # pins, and the third-party notices of every module.
           tool: wasm-bindgen@0.2.129,cargo-about@0.9.3
       - name: Install binaryen and HarfBuzz
+        if: steps.demos.outputs.cache-hit != 'true'
         run: |
           curl --fail --location --silent --show-error \
             "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz" \
@@ -134,6 +156,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends libharfbuzz-bin
       - name: Install system dependencies
+        if: steps.demos.outputs.cache-hit != 'true'
         run: script/bootstrap
       # Astro's minimum, the same file nvm and fnm read locally.
       - uses: actions/setup-node@v4
@@ -158,6 +181,7 @@ jobs:
       # cache entry unused for a week goes, and the next build fetches the
       # feeds' current versions once.
       - name: Cache transit data
+        if: steps.demos.outputs.cache-hit != 'true'
         id: transit
         uses: actions/cache@v4
         with:
@@ -167,7 +191,7 @@ jobs:
             gpui-kit-grid/crates/grid/examples/data/hsl-network.tsv*
           key: transit-data-${{ hashFiles('gpui-kit-grid/script/fetch-transit-data') }}
       - name: Fetch transit data
-        if: steps.transit.outputs.cache-hit != 'true'
+        if: steps.demos.outputs.cache-hit != 'true' && (steps.transit.outputs.cache-hit != 'true')
         run: |
           python3 -I script/fetch-transit-data
           python3 -I script/fetch-transit-data --helsinki
@@ -175,6 +199,7 @@ jobs:
           rm -f crates/grid/examples/data/*.zip
 
       - name: Fetch the recordings
+        if: steps.demos.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -191,10 +216,24 @@ jobs:
       # Every example's module, glue and notices, with only the data the
       # site may serve (`SITE=1`; RUSTC_BOOTSTRAP is set by the script).
       - name: Build the demos
+        if: steps.demos.outputs.cache-hit != 'true'
         run: make -C crates/grid-web site
 
       - name: Build the API reference
+        if: steps.demos.outputs.cache-hit != 'true'
         run: cargo doc --no-deps --locked -p gpui-kit-grid --features decimal,derive
+
+      - name: Save the demos and the API reference
+        if: steps.demos.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            gpui-kit-grid/crates/grid-web/www/pkg
+            gpui-kit-grid/crates/grid-web/www/data
+            gpui-kit-grid/crates/grid-web/www/licenses
+            gpui-kit-grid/crates/grid-web/www/fonts
+            gpui-kit-grid/target/doc
+          key: ${{ steps.demos.outputs.cache-primary-key }}
 
       - name: Install the site's dependencies
         working-directory: gpui-kit-grid/site

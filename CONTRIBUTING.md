@@ -125,6 +125,12 @@ The documentation site has its own workflow (`.github/workflows/site.yml`):
 `bun test --cwd site`, after a release build of the web examples
 (`make -C crates/grid-web build`).
 
+
+A change to the site alone (`site/`, `docker/site/`, `site.yml`) or to the
+Markdown at the root skips the Rust jobs of CI; only `Checks` runs, and the
+Site workflow checks the site. The Site workflow keeps the built demos and
+rustdoc in a cache keyed on `crates/**`, `Cargo.lock` and the demos' inputs,
+so a site-only change or release does not rebuild them either.
 ## Code Style
 
 Before you start to write code, please read the existing code and
