@@ -21,7 +21,7 @@ about a 7 MB download.
 | Attribute | What it does |
 | --- | --- |
 | `app` | The example: `quotes` (the default), `desk`, `broker`, `ops`, `orbit`, `transit`, `wiki` or `ships`. |
-| `mode` | `inline` (the default) runs the example in your page, its canvas inside the element. `frame` shows the example's page in an iframe with `allow="clipboard-write; fullscreen"`: its keyboard shortcuts stay inside, and copying works there. |
+| `mode` | `inline` (the default) runs the example in your page, its canvas inside the element. `frame` shows the example's page in an iframe with `allow="clipboard-write; fullscreen"` (credentialless on a cross-origin isolated page, such as a StackBlitz WebContainers preview): its keyboard shortcuts stay inside, and copying works there. |
 | `theme` | A theme remix: JSON, or packed as `v1.…` the way Play and `#theme=` links carry it. Changing the attribute recolours the running example. |
 | `query` | The example's own parameters, such as `seed=7&rate=20`. |
 | `autoload` | Starts the example once the element is on screen. Without it, and on touch screens or with Save-Data, a button starts it. |

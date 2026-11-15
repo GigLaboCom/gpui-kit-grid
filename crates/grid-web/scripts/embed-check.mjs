@@ -46,30 +46,22 @@
 
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { launch, sleep } from './chrome.mjs';
 import { serve, site } from './serve.mjs';
+import {
+  COPY_NOTICE,
+  EXAMPLES,
+  FATAL,
+  NO_CELESTRAK,
+  answerCelestrak,
+  appsFromEnv,
+  celestrakElements,
+} from './embed-apps.mjs';
 
 const OUT = process.env.OUT ?? process.cwd();
-const TIME = '2026-11-06T17:30:00Z';
-// Each case's example and `query`: a fixed seed, its recording, a fixed
-// time, or (orbit) CelesTrak's elements, which the check answers itself.
-const CASES = {
-  quotes: ['quotes', 'seed=7&rate=20'],
-  desk: ['desk', 'seed=7'],
-  broker: ['broker', 'seed=7'],
-  orbit: ['orbit', `data=celestrak&time=${TIME}`],
-  transit: ['transit', `time=${TIME}`],
-  helsinki: ['transit', 'city=helsinki&source=replay'],
-  wiki: ['wiki', 'replay'],
-  ships: ['ships', 'source=replay'],
-  ops: ['ops', 'seed=7'],
-};
-const APPS =
-  process.env.APPS === 'all'
-    ? Object.keys(CASES)
-    : (process.env.APPS ?? 'quotes').split(',').filter(Boolean);
-const QUERIES = { quotes: CASES.quotes[1] };
+const APPS = appsFromEnv();
+const QUERIES = { quotes: EXAMPLES.quotes[1] };
 // What the line under an inline example names, on open data.
 const CREDITS = {
   orbit: 'CelesTrak',
@@ -78,40 +70,17 @@ const CREDITS = {
   wiki: 'Wikimedia',
   ships: 'digitraffic.fi',
 };
-// The mocked CelesTrak's elements: the first few hundred objects of the
-// local `data/celestrak-active.json` (script/fetch-orbit-data), never
-// served by the examples' site build.
-const ELEMENTS = fileURLToPath(new URL('../../grid/examples/data/celestrak-active.json', import.meta.url));
-const ORBIT_OBJECTS = 300;
 const MARKETS = ['quotes', 'desk', 'broker'];
 const SIMULATED = 'Simulated prices, not market data';
-const COPY_NOTICE = 'Copy needs clipboard permission on this site';
 const START_MS = 40000;
 // Wheel events further apart than this start a new gesture (`guest.js`).
 const GESTURE_GAP_MS = 200;
 // A row of the quotes grid, from the element's top left.
 const ROW = [300, 140];
 const CTRL = 2;
-const FATAL = /panicked|RuntimeError|already borrowed|unreachable|TypeError|Uncaught|GRID_ERROR/i;
 
-for (const app of APPS) {
-  if (!(app in CASES)) {
-    console.error(`APPS=${app}: not one of ${Object.keys(CASES).join(', ')}`);
-    process.exit(1);
-  }
-}
 mkdirSync(OUT, { recursive: true });
-
-let elements = null;
-if (APPS.includes('orbit')) {
-  try {
-    const all = JSON.parse(readFileSync(ELEMENTS, 'utf8'));
-    elements = Buffer.from(JSON.stringify(all.slice(0, ORBIT_OBJECTS)));
-  } catch (error) {
-    console.error(`APPS=orbit: no local elements for the mocked CelesTrak (${error.message}): run script/fetch-orbit-data once.`);
-    process.exit(1);
-  }
-}
+const elements = APPS.includes('orbit') ? celestrakElements() : null;
 
 const pages = await site();
 const cdn = pages.base;
@@ -139,27 +108,9 @@ function report(name, why) {
 // celestrak.org; with `celestrak` the page and its frames get the mock's
 // elements for it, counted in `page.asked`.
 async function onPage(name, url, run, { celestrak = false } = {}) {
-  const chrome = await launch(['--host-resolver-rules=MAP celestrak.org ~NOTFOUND']);
+  const chrome = await launch([NO_CELESTRAK]);
   const log = [];
   const asked = [];
-  // The browser's, so that requests from the page and its frames pause.
-  chrome.onBrowser(({ method, params }) => {
-    if (method === 'Fetch.requestPaused') {
-      asked.push(params.request.url);
-      chrome
-        .browser('Fetch.fulfillRequest', {
-          requestId: params.requestId,
-          responseCode: 200,
-          responseHeaders: [
-            { name: 'Access-Control-Allow-Origin', value: '*' },
-            { name: 'Content-Type', value: 'application/json' },
-            { name: 'Last-Modified', value: 'Fri, 06 Nov 2026 16:00:00 GMT' },
-          ],
-          body: elements.toString('base64'),
-        })
-        .catch(() => {});
-    }
-  });
   chrome.on(({ method, params }) => {
     if (method === 'Runtime.consoleAPICalled') {
       log.push(params.args.map((arg) => arg.value ?? arg.description ?? '').join(' '));
@@ -255,9 +206,7 @@ async function onPage(name, url, run, { celestrak = false } = {}) {
     // A headless page is not focused unless asked: as a reader's tab, so
     // that `document.hasFocus()` tells where the keyboard is.
     await send('Emulation.setFocusEmulationEnabled', { enabled: true });
-    if (celestrak) {
-      await chrome.browser('Fetch.enable', { patterns: [{ urlPattern: '*://celestrak.org/*' }] });
-    }
+    if (celestrak) await answerCelestrak(chrome, elements, asked);
     await send('Page.navigate', { url });
     await run(page);
   } catch (error) {
@@ -720,7 +669,7 @@ try {
   // More examples: start, rows and the line, inline and in a frame, on
   // what each page hands its module first (`<app>/setup.js`).
   for (const name of APPS.filter((name) => name !== 'quotes')) {
-    const [app, query] = CASES[name];
+    const [app, query] = EXAMPLES[name];
     for (const mode of ['inline', 'frame']) {
       const url = hostPage('index.html', { app, mode, query });
       const run = async (page) => {
