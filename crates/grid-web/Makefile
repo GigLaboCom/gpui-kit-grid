@@ -20,7 +20,7 @@
 # stages the site build under the site's dist/demo/, `make posters` draws
 # the site's poster of each example.
 
-.PHONY: build build-dev site site-dist posters licenses serve gateway measure measure-feed input examples survive embed-check embed-sites orbit-site clean
+.PHONY: build build-dev site site-dist posters licenses serve gateway measure measure-feed input examples survive embed-check embed-sites orbit-site npm-pack clean
 
 build: ## Release build into www/pkg/<app>/ (APP=desk for one)
 	./scripts/build-wasm.sh --release
@@ -69,6 +69,9 @@ embed-sites: ## The <live-grid> snippet in each snippet platform's and blog host
 
 orbit-site: ## The orbit page's CelesTrak mode in headless Chrome, CelesTrak mocked
 	node scripts/orbit-site.mjs
+
+npm-pack: ## The <live-grid> npm packages from a site build into target/npm/, listed by npm pack --dry-run; publishes nothing (DRAFT=1 without a site build, SCOPE=, VERSION=)
+	node scripts/npm-pack.mjs $(if $(DRAFT),--draft) $(if $(SCOPE),--scope=$(SCOPE)) $(if $(VERSION),--version=$(VERSION))
 
 clean:
 	rm -rf www/pkg www/licenses target
