@@ -38,7 +38,6 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -514,8 +513,9 @@ ${fontRows}
   );
 }
 
-// `data/` for the public site: links to the files it may serve, each with
-// its licence note.
+// `data/` for the public site: copies of the files it may serve, each with
+// its licence note. Copies, not links: CI caches `www/data` with the demos
+// and skips fetching the data on a cache hit, where links would dangle.
 function stageSiteData(feed) {
   const data = join(WWW, 'data');
   rmSync(data, { recursive: true, force: true });
@@ -525,7 +525,7 @@ function stageSiteData(feed) {
       console.error(`licenses: no ${file} in crates/grid/examples/data/: its page will say so.`);
       continue;
     }
-    symlinkSync(join('..', '..', '..', 'grid', 'examples', 'data', file), join(data, file));
+    copyFileSync(join(DATA, file), join(data, file));
     writeFileSync(
       join(data, `${file}.license`),
       note(
