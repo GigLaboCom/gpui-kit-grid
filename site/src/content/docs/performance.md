@@ -47,6 +47,29 @@ Every limit holds in both runs. The ingest and highlight memory rows come from t
 
 On the S1 load (1500 visible cells, 2k updates a second) gpui-kit's `DataTable`, which builds an element per cell, takes 12–14 ms a frame; the grid, which paints glyphs from one element, about 1.1 ms.
 
+### Against DataTable under the S2 load, sorted and scrolled
+
+On S1 nothing moves, so it compares painting only. S6c puts `DataTable` under the S2 load: 100k rows × 40 columns, 166 updates a frame on random keys (10k a second), shown sorted by the column the updates change, descending. S6d also scrolls to a new page every frame. `DataTable` addresses rows by index and calls its delegate on the UI thread, so the delegate keeps the order there, in one of three ways: it sorts the whole order every frame (what an application writes first), removes and reinserts each updated row by binary search, or removes the changed rows in one pass and merges them back, redrawing only when the rows on screen changed. Every delegate stores rows by key and formats every row once at setup, as the fast delegate of S6b does, so a cell only clones a string. S2c and S3c run the grid under the same load and scrolling.
+
+The figure is the UI thread's time per frame. For `DataTable` it is the update, the upkeep of the order and the draw; for the grid, the draw and the pull of the store's snapshot, while the grid's rebuilds run on a background thread. When the test platform draws more than once in a 16 ms interval, only the longest draw counts, as a display draws once. Release build of `472ff88` (`SPIKE_STORM_ONLY=1`), two runs, on a machine that was not idle (load average 7–28).
+
+| Scenario | p50, ms | p99, ms | max, ms |
+|---|---|---|---|
+| Grid, S2 load (S2c) | 0.01 | 1.38–1.51 | 1.51–2.14 |
+| The same, the 66 frames of 300 that draw | 1.20–1.27 | 1.45–1.90 | 1.51–2.14 |
+| `DataTable`, sort every frame (S6c) | 13.5–13.6 | 16.4–16.5 | 19.8–42.5 |
+| `DataTable`, binary search per update (S6c) | 13.1–13.5 | 14.2–17.8 | 15.7–33.8 |
+| `DataTable`, one-pass merge, redrawn on change (S6c) | 0.33–0.34 | 12.7–13.0 | 13.2–13.7 |
+| The same, the 22 frames of 300 that draw | 12.4–12.7 | 13.2–13.7 | 13.2–13.7 |
+| Grid, S2 load and a new page every frame (S3c) | 1.21–1.22 | 2.85–3.14 | 4.41–4.48 |
+| `DataTable`, the same, sort every frame (S6d) | 36.4–36.8 | 38.6–50.9 | 39.1–72.3 |
+| `DataTable`, the same, binary search per update (S6d) | 36.4–38.0 | 41.4–44.9 | 42.4–56.6 |
+| `DataTable`, the same, one-pass merge (S6d) | 34.2–35.4 | 37.2–38.1 | 37.9–38.9 |
+
+Keeping the order costs `DataTable` little: 1.5 ms a frame to sort everything (p99 3.0–3.5 ms), 0.3–0.4 ms to merge. The draw is the cost: about 12 ms for a page that changes in place, 34–37 ms for a new page every frame. While the view scrolls under the load, the grid's UI thread works 28–29 times less than with the best `DataTable` delegate at the median and 12–13 times less at p99. With the view still, both skip the frames in which nothing on screen changed, and a frame that draws costs the grid about 10 times less. The grid's rebuilds took p50 3.6–3.8 ms and p99 4.0–6.6 ms on the background thread, one every 100 ms.
+
+The comparison leaves out three things. The grid shows a new order at most every 100 ms (its rebuild interval), the `DataTable` delegates every frame. Outside the measured subtree GPUI spends 0.4 ms a frame with the grid and 1.6–1.9 ms with `DataTable`. The grid's ingest runs on a background thread, which in the headless test is the main thread: counting it, installing each rebuilt order and every extra draw, the grid's main thread with the view scrolling takes at most p50 3.2 ms and p99 8.6–8.8 ms, against 36–37 ms and 39–40 ms for the best `DataTable` delegate.
+
 ## Stage 3 scenarios
 
 Release build of the stage 3 code on an idle machine (load average 2.4–5.0), 100k rows × 40 columns. In the same run S1 and S2 stay at frame p99 1.09 ms and 1.33 ms.
