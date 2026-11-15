@@ -14,9 +14,13 @@
   Access-Control-Allow-Origin: *
   Cross-Origin-Resource-Policy: cross-origin
 
+# The examples' modules, fonts and data keep their names from one release
+# to the next: the browser asks again each time (an ETag answers 304), so
+# that an element never meets the module of an older release.
 /demo/*
   Access-Control-Allow-Origin: *
   Cross-Origin-Resource-Policy: cross-origin
+  Cache-Control: no-cache
 
 # The element's modules are named by their content: they never change.
 /embed/:version/modules/*
