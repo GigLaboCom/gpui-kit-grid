@@ -38,6 +38,14 @@
 //! # (SPIKE_S42_SECONDS sets the seconds per cell, 10 by default;
 //! # SPIKE_S42_CELLS=uniform:100000,zipf:1000,new runs only those groups)
 //! SPIKE_S42_ONLY=1 cargo run --release -p gpui-kit-grid --features test-support --example spike_bench
+//! # S43 alone: every painted cell changes every frame, the grid and
+//! # DataTable, the view still and under the S2 load
+//! SPIKE_EVERY_CELL_ONLY=1 cargo run --release -p gpui-kit-grid --features test-support --example spike_bench
+//! # S44 alone: write to picture (SPIKE_S44_SECONDS per cell, 10 by default)
+//! SPIKE_PICTURE_ONLY=1 cargo run --release -p gpui-kit-grid --features test-support --example spike_bench
+//! # S45, the soak, only on request and never in the full run: the S2 load
+//! # for the given minutes
+//! SPIKE_SOAK_MINUTES=30 cargo run --release -p gpui-kit-grid --features test-support --example spike_bench
 //! ```
 
 use std::{
@@ -49,8 +57,12 @@ use std::{
         Arc, LazyLock,
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
+
+// Profiling durations only; the same type as `std::time::Instant` on the
+// native targets this benchmark runs on.
+use web_time::Instant;
 
 use gpui_kit::base::actions::{Cancel, SelectPageDown};
 use gpui_kit::{
@@ -358,10 +370,25 @@ fn mutate(rng: &mut fastrand::Rng, quote: &mut Quote) {
 
 type Samples = Rc<RefCell<Vec<Duration>>>;
 
+/// S44: when each draw of the subtree started and ended, and the probe's
+/// sequence the grid held when it ended (what that draw painted).
+#[derive(Clone, Copy)]
+struct DrawMark {
+    started: Instant,
+    ended: Instant,
+    probe: u64,
+}
+
+type DrawMarks = Rc<RefCell<Vec<DrawMark>>>;
+
+/// Reads the probe's sequence in the grid's snapshot.
+type ProbeReader = Rc<dyn Fn(&App) -> u64>;
+
 struct Timed {
     child: AnyElement,
     samples: Samples,
     started: Option<Instant>,
+    marks: Option<(DrawMarks, ProbeReader)>,
 }
 
 impl Timed {
@@ -370,7 +397,14 @@ impl Timed {
             child: child.into_any_element(),
             samples,
             started: None,
+            marks: None,
         }
+    }
+
+    /// Also marks every draw in `marks`, with the sequence `probe` reads.
+    fn marked(mut self, marks: DrawMarks, probe: ProbeReader) -> Self {
+        self.marks = Some((marks, probe));
+        self
     }
 }
 
@@ -431,7 +465,15 @@ impl Element for Timed {
     ) {
         self.child.paint(window, cx);
         if let Some(started) = self.started.take() {
-            self.samples.borrow_mut().push(started.elapsed());
+            let ended = Instant::now();
+            self.samples.borrow_mut().push(ended - started);
+            if let Some((marks, probe)) = &self.marks {
+                marks.borrow_mut().push(DrawMark {
+                    started,
+                    ended,
+                    probe: probe(cx),
+                });
+            }
         }
     }
 }
@@ -861,13 +903,22 @@ impl GridHarness {
     }
 
     fn write(&mut self, ids: impl IntoIterator<Item = u64>) {
+        self.write_with(ids, mutate);
+    }
+
+    /// [`Self::write`] with `change` instead of [`mutate`].
+    fn write_with(
+        &mut self,
+        ids: impl IntoIterator<Item = u64>,
+        mut change: impl FnMut(&mut fastrand::Rng, &mut Quote),
+    ) {
         let writer = self
             .harness
             .cx
             .read_entity(&self.grid, |grid, _| grid.writer());
         for id in ids {
             let quote = &mut self.model[id as usize];
-            mutate(&mut self.rng, quote);
+            change(&mut self.rng, quote);
             writer.upsert(quote.clone());
         }
     }
@@ -2346,6 +2397,10 @@ enum OrderUpkeep {
     /// order and O(changed · log rows) comparisons a frame. The table is
     /// redrawn only when the rows on screen changed, as the grid does.
     Merge,
+    /// S43 with the view still: the order is by key, which updates never
+    /// change, so there is nothing to keep. The table is redrawn only when a
+    /// row on screen changed.
+    ByKey,
 }
 
 impl OrderUpkeep {
@@ -2354,6 +2409,7 @@ impl OrderUpkeep {
             Self::SortAll => "sort every frame",
             Self::BinarySearch => "binary search per update",
             Self::Merge => "one-pass merge, redrawn only when the shown rows change",
+            Self::ByKey => "order by key, nothing to keep",
         }
     }
 }
@@ -2394,7 +2450,9 @@ impl StormTable {
             .map(|quote| Some(format_row(quote, &column_order)))
             .collect();
         let mut order: Vec<u32> = (0..rows.len() as u32).collect();
-        order.sort_by(|&a, &b| storm_order(&rows, a, b));
+        if !matches!(upkeep, OrderUpkeep::ByKey) {
+            order.sort_by(|&a, &b| storm_order(&rows, a, b));
+        }
         Self {
             columns: table_columns(&column_order),
             is_changed: vec![false; rows.len()],
@@ -2484,12 +2542,27 @@ impl StormTable {
                 }
                 redraw
             }
+            OrderUpkeep::ByKey => {
+                // The order is the keys in turn: a display row is its key.
+                let mut redraw = false;
+                for quote in batch {
+                    let key = quote.id as usize;
+                    redraw |= shown.contains(&key);
+                    rows[key] = quote;
+                    cells[key] = None;
+                }
+                redraw
+            }
         }
     }
 
     fn is_sorted(&self) -> bool {
-        self.order
-            .is_sorted_by(|&a, &b| storm_order(&self.rows, a, b).is_le())
+        match self.upkeep {
+            OrderUpkeep::ByKey => self.order.is_sorted(),
+            _ => self
+                .order
+                .is_sorted_by(|&a, &b| storm_order(&self.rows, a, b).is_le()),
+        }
     }
 }
 
@@ -6145,8 +6218,8 @@ fn rss_mb() -> f64 {
 
 /// Waits for the next publish, at most 50 ms: false once `stop` is set
 /// or the store is gone.
-fn next_publish(
-    subscription: &gpui_kit_grid::StoreSubscription<StormRow>,
+fn next_publish<R: GridRow>(
+    subscription: &gpui_kit_grid::StoreSubscription<R>,
     stop: &AtomicBool,
 ) -> bool {
     loop {
@@ -6542,8 +6615,1345 @@ fn scenario_keyed_storm() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// S43: every painted cell changes every frame, the grid against `DataTable`.
+
+/// How S43 changes the text columns.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TextChange {
+    /// Another text of the column's pool: it reads differently from the
+    /// last, but the pools' few hundred texts repeat, so a text cache keeps
+    /// them shaped.
+    Pooled,
+    /// A text never shown before (a counter before a text of the pool):
+    /// every changed text cell has to be shaped anew.
+    Unique,
+}
+
+impl TextChange {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Pooled => "texts from the pools",
+            Self::Unique => "every text new",
+        }
+    }
+}
+
+/// S43: a new value in every column but the key (the Id), each reading
+/// differently from the last: prices move by 0.02 to 1 (shown with two
+/// decimals, so the text always changes), sizes by 1 to 100, texts as
+/// `text` says. `counter` numbers the new texts.
+fn mutate_every_column(
+    rng: &mut fastrand::Rng,
+    quote: &mut Quote,
+    pools: &Pools,
+    text: TextChange,
+    counter: &mut u64,
+) {
+    for price in &mut quote.prices {
+        let step = 0.02 + rng.f64() * 0.98;
+        *price = if *price > 1. && rng.bool() {
+            *price - step
+        } else {
+            *price + step
+        };
+    }
+    for size in &mut quote.sizes {
+        let step = rng.i64(1..=100);
+        *size += if rng.bool() { step } else { -step };
+    }
+    for (ix, value) in quote.texts.iter_mut().enumerate() {
+        let pool = &pools.pools[ix];
+        *counter += 1;
+        *value = if pool.is_empty() {
+            // The order id (hidden): a new one.
+            Arc::from(format!("ORD{:08}", *counter))
+        } else if text == TextChange::Unique {
+            Arc::from(format!("{} {}", *counter, pool[rng.usize(..pool.len())]))
+        } else {
+            loop {
+                let next = &pool[rng.usize(..pool.len())];
+                if **next != **value {
+                    break next.clone();
+                }
+            }
+        };
+    }
+}
+
+/// The share of `part` in `whole`, in %.
+fn share(part: u64, whole: u64) -> f64 {
+    part as f64 * 100. / whole.max(1) as f64
+}
+
+/// S43 on the grid: every painted row gets a new value in every column each
+/// frame (about 1,500 cells, 90k cell changes a second at 60 fps), timed as
+/// S2c: the draw and the pull of the store's snapshot per frame, on the UI
+/// thread. Without `storm` the view is sorted by the key, so the painted rows
+/// stay; with it, the S2 load runs on top (166 more updates a frame on
+/// random keys) and the view is sorted by "Price 1", which every update
+/// changes. Shaped: the text lookups of the frames that missed the grid's
+/// text cache; numbers are laid out from a glyph table, never shaped.
+fn scenario_every_cell_grid(pools: &Pools, text: TextChange, storm: bool) {
+    let runner = TimedRunner::default();
+    let sort = if storm {
+        (Col(1), SortDirection::Descending)
+    } else {
+        (Col(0), SortDirection::Ascending)
+    };
+    let mut grid = GridHarness::configured(pools, {
+        let runner = runner.clone();
+        move |grid| {
+            grid.with_view(ViewSpec::new().with_sort([sort]))
+                .with_selection_mode(SelectionMode::RowSet)
+                .with_task_runner(runner)
+        }
+    });
+    runner.take();
+    let stats = |grid: &mut GridHarness| {
+        grid.harness
+            .cx
+            .read_entity(&grid.grid, |grid, _| (grid.stats(), grid.text_stats()))
+    };
+    let load = load_average();
+    let (mut draws, mut pulls, mut ui, mut main, mut jobs) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let (mut multiple_pulls, mut extra_draws, mut counter) = (0, 0, 0u64);
+    let (mut painted, mut changed) = (0usize, 0usize);
+    let (mut seen, text_before) = stats(&mut grid);
+    for _ in 0..FRAMES {
+        // The feed, off the measured time: every painted row, every column.
+        let visible = grid.visible_keys();
+        grid.write_with(visible.iter().copied(), |rng, quote| {
+            mutate_every_column(rng, quote, pools, text, &mut counter)
+        });
+        if storm {
+            let ids: Vec<u64> = (0..S2_UPDATES).map(|_| grid.rng.u64(..ROWS)).collect();
+            grid.write(ids);
+        }
+        let drawn = grid.harness.samples.borrow().len();
+        let started = Instant::now();
+        grid.harness.tick();
+        let elapsed = started.elapsed();
+        let frame_jobs = runner.take();
+        jobs.extend_from_slice(&frame_jobs);
+        main.push(elapsed.saturating_sub(frame_jobs.iter().sum()));
+        let draw = frame_draw(&grid.harness.samples, drawn, &mut extra_draws);
+        let (now, _) = stats(&mut grid);
+        let pull = match now.snapshots() - seen.snapshots() {
+            0 => Duration::ZERO,
+            pulled => {
+                if pulled > 1 {
+                    multiple_pulls += 1;
+                }
+                pulls.push(now.last_pull());
+                now.last_pull() * pulled as u32
+            }
+        };
+        seen = now;
+        // The Id of each painted row is its key, which never changes.
+        painted += now.visible_cells();
+        changed += now.visible_cells().saturating_sub(visible.len());
+        draws.push(draw);
+        ui.push(draw + pull);
+    }
+    let (_, text_after) = stats(&mut grid);
+    let samples = grid.harness.take();
+    let (misses, numeric) = (
+        text_after.misses() - text_before.misses(),
+        text_after.numeric() - text_before.numeric(),
+    );
+    let lookups = misses + numeric + text_after.hits() - text_before.hits();
+    let name = format!(
+        "S43 grid: every painted cell changes every frame, {}{}",
+        text.label(),
+        if storm {
+            ", + the S2 load"
+        } else {
+            ", view still"
+        },
+    );
+    let notes = format!(
+        "load {load}; UI thread per frame (draw + snapshot pull) {}; {} frames drew; cells painted per frame {:.0}, changed {:.0} ({:.0}k cell changes/s at 60 fps); shaped anew {:.1}% of painted cells, numbers from the glyph table {:.1}%, text cache entries {}; pull p50 {:.3} ms, p99 {:.3} ms over {} pulls ({multiple_pulls} frames with more than one); draw {}; main thread per frame, everything less the rebuilds {}; {extra_draws} extra draws; rebuild jobs (background) {}, {}; {}",
+        spread(&ui),
+        drawn_frames(&ui, &draws).len(),
+        painted as f64 / FRAMES as f64,
+        changed as f64 / FRAMES as f64,
+        changed as f64 / FRAMES as f64 * 60. / 1e3,
+        share(misses, lookups),
+        share(numeric, lookups),
+        text_after.entries(),
+        ms(percentile(&pulls, 0.5)),
+        ms(percentile(&pulls, 0.99)),
+        pulls.len(),
+        spread(&draws),
+        spread(&main),
+        jobs.len(),
+        spread(&jobs),
+        grid.notes(),
+    );
+    grid.harness.report(&name, FRAMES, &samples, &notes);
+}
+
+/// S43 on `DataTable` with S6c's fast delegate ([`StormTable`]): every shown
+/// row gets a new value in every column each frame, as on the grid. Timed
+/// as S6c: the update with the upkeep of the order, and the draw, per frame
+/// on the UI thread. Without `storm` the order is by key; with it, the S2
+/// load runs on top and the delegate keeps the order by "Price 1" with the
+/// one-pass merge. Shaped anew: the texts a frame showed that the previous
+/// frame did not, which GPUI's line layout cache (the current and the
+/// previous frame) has to shape; an estimate from the shown rows and
+/// columns, counted off the measured time.
+fn scenario_every_cell_table(pools: &Pools, text: TextChange, storm: bool) {
+    let mut rng = fastrand::Rng::with_seed(7);
+    let rows: Vec<Quote> = (0..ROWS).map(|id| pools.row(&mut rng, id)).collect();
+    let mut feed = rows.clone();
+    let upkeep = if storm {
+        OrderUpkeep::Merge
+    } else {
+        OrderUpkeep::ByKey
+    };
+    let (delegate, setup) = time(|| StormTable::new(rows, upkeep));
+    let (mut harness, table) = table_harness(delegate);
+    harness
+        .cx
+        .update(|cx| table.update(cx, |table, _| table.delegate_mut().misses = 0));
+    let order = display_order();
+    let load = load_average();
+    let (mut updates, mut draws, mut ui, mut main) = (
+        Vec::with_capacity(FRAMES),
+        Vec::with_capacity(FRAMES),
+        Vec::with_capacity(FRAMES),
+        Vec::with_capacity(FRAMES),
+    );
+    let (mut extra_draws, mut counter) = (0, 0u64);
+    let (mut changed, mut painted, mut new_texts) = (0u64, 0u64, 0u64);
+    let mut shown_texts: FxHashSet<SharedString> = FxHashSet::default();
+    let mut texts: FxHashSet<SharedString> = FxHashSet::default();
+    let shown = |table: &TableState<StormTable>| {
+        let delegate = table.delegate();
+        let rows = table.visible_range().rows();
+        let rows = rows.start.min(delegate.order.len())..rows.end.min(delegate.order.len());
+        (
+            delegate.order[rows].to_vec(),
+            table.visible_range().cols().clone(),
+        )
+    };
+    for _ in 0..FRAMES {
+        // The feed, off the measured time: every shown row, every column,
+        // then the S2 updates.
+        let (keys, cols) = harness.cx.read_entity(&table, |table, _| shown(table));
+        let mut batch = Vec::with_capacity(keys.len() + S2_UPDATES);
+        for &key in &keys {
+            let quote = &mut feed[key as usize];
+            let before = format_row(quote, &order);
+            mutate_every_column(&mut rng, quote, pools, text, &mut counter);
+            let after = format_row(quote, &order);
+            changed += cols
+                .clone()
+                .filter(|&col| before.get(col) != after.get(col))
+                .count() as u64;
+            batch.push(quote.clone());
+        }
+        if storm {
+            for _ in 0..S2_UPDATES {
+                let quote = &mut feed[rng.usize(..ROWS as usize)];
+                mutate(&mut rng, quote);
+                batch.push(quote.clone());
+            }
+        }
+        let drawn = harness.samples.borrow().len();
+        let started = Instant::now();
+        // Test mode draws the dirty window at the end of this update.
+        harness.cx.update(|cx| {
+            table.update(cx, |table, cx| {
+                let shown = table.visible_range().rows().clone();
+                let (redraw, elapsed) = time(|| table.delegate_mut().apply(batch, shown));
+                updates.push(elapsed);
+                if redraw {
+                    cx.notify();
+                }
+            })
+        });
+        harness.tick();
+        main.push(started.elapsed());
+        let draw = frame_draw(&harness.samples, drawn, &mut extra_draws);
+        draws.push(draw);
+        ui.push(draw + updates.last().copied().unwrap_or_default());
+        // Off the measured time: the texts this frame showed.
+        let (keys, cols) = harness.cx.read_entity(&table, |table, _| shown(table));
+        harness.cx.read_entity(&table, |table, _| {
+            let cells = &table.delegate().cells;
+            for key in keys {
+                let Some(row) = &cells[key as usize] else {
+                    continue;
+                };
+                for text in cols.clone().filter_map(|col| row.get(col)) {
+                    painted += 1;
+                    if !shown_texts.contains(text) {
+                        new_texts += 1;
+                    }
+                    texts.insert(text.clone());
+                }
+            }
+        });
+        std::mem::swap(&mut shown_texts, &mut texts);
+        texts.clear();
+    }
+    let samples = harness.take();
+    let (sorted, misses) = harness.cx.read_entity(&table, |table, _| {
+        (table.delegate().is_sorted(), table.delegate().misses)
+    });
+    assert!(sorted, "the S43 order must stay sorted");
+    let name = format!(
+        "S43 DataTable, fast delegate: every shown cell changes every frame, {}{}",
+        text.label(),
+        if storm {
+            ", + the S2 load, one-pass merge"
+        } else {
+            ", view still, order by key"
+        },
+    );
+    let notes = format!(
+        "load {load}; UI thread per frame (update + order + draw) {}; {} frames drew; cells shown per frame {:.0}, changed {:.0} ({:.0}k cell changes/s at 60 fps); shaped anew (estimate: texts not shown in the previous frame) {:.1}% of shown cells; update + order {}; draw {}; main thread per frame, everything {}; {extra_draws} extra draws; cells formatted at setup ({:.0} ms), {misses} changed rows formatted again in render_td",
+        spread(&ui),
+        drawn_frames(&ui, &draws).len(),
+        painted as f64 / FRAMES as f64,
+        changed as f64 / FRAMES as f64,
+        changed as f64 / FRAMES as f64 * 60. / 1e3,
+        share(new_texts, painted),
+        spread(&updates),
+        spread(&draws),
+        spread(&main),
+        ms(setup),
+    );
+    harness.report(&name, FRAMES, &samples, &notes);
+}
+
+/// S43: the grid and `DataTable`, with the view still and under the S2
+/// load, with texts from the pools and with every text new.
+fn scenario_every_cell(pools: &Pools) {
+    for storm in [false, true] {
+        for text in [TextChange::Pooled, TextChange::Unique] {
+            scenario_every_cell_grid(pools, text, storm);
+            scenario_every_cell_table(pools, text, storm);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// S44: from a write to the picture. A producer thread writes to a store on
+// real threads (GPUI's background executor, not the test's) and, every
+// millisecond, a probe: a row on screen whose painted column carries a
+// sequence. The harness ticks the window every 16 ms of the wall clock, as a
+// display would: each tick runs what the main thread has to do (the grid's
+// pull of the snapshot, and the draw). The grid's rebuilds run on real
+// threads too. For every probe write: the time from the write call to the
+// end of the first draw that shows it or a later one, split into write →
+// publish (a watcher thread subscribed to the store sees it), publish → pull
+// (mostly the wait for the harness's next tick, which a display's frame
+// interval also costs), and pull → end of the draw. The end of the draw is
+// the end of the grid subtree's paint on the main thread: GPUI's own work
+// after it, the GPU, the compositor and the display are not in it.
+//
+// S45 (`SPIKE_SOAK_MINUTES`): the S2 cell of S44 for minutes, the view
+// scrolling a new page every frame for the first 10 s of each minute.
+
+/// Seconds per S44 cell (`SPIKE_S44_SECONDS` sets them).
+const S44_SECONDS: f64 = 10.;
+/// The probe of the storm: a key outside the storm's keys, in the first
+/// group (`key % 16 == 0`), its count above every other, so it is the first
+/// row under the first group's caption.
+const S44_STORM_PROBE: u32 = u32::MAX - 15;
+const S44_PROBE_COUNT: i64 = 1 << 40;
+/// The probe of the S2 cell: key 0, first by "Price 1" descending; its
+/// sequence is in "Size 10", frozen at the right edge.
+const S44_QUOTE_PROBE: u64 = 0;
+const S44_PROBE_PRICE: f64 = 1e6;
+const S44_PROBE_SIZE: usize = 9;
+/// A draw's probe is matched with the watcher's publishes this long after
+/// it, so the watcher has seen them.
+const S44_RESOLVE_AFTER: Duration = Duration::from_millis(50);
+/// S45: the view scrolls for this long at the start of every minute.
+const S45_FLING: Duration = Duration::from_secs(10);
+
+/// Durations in buckets of 10 µs up to 2 s (beyond, in the last), with the
+/// exact largest: percentiles of a run of any length in a fixed amount of
+/// memory, so that a long run's own samples do not show as growth of its
+/// resident memory.
+struct Histogram {
+    counts: Vec<u32>,
+    total: u64,
+    max: Duration,
+}
+
+impl Histogram {
+    const BUCKET_NS: u128 = 10_000;
+    const BUCKETS: usize = 200_000;
+
+    fn new() -> Self {
+        Self {
+            counts: vec![0; Self::BUCKETS],
+            total: 0,
+            max: Duration::ZERO,
+        }
+    }
+
+    fn add(&mut self, duration: Duration) {
+        let ix = (duration.as_nanos() / Self::BUCKET_NS) as usize;
+        self.counts[ix.min(Self::BUCKETS - 1)] += 1;
+        self.total += 1;
+        self.max = self.max.max(duration);
+    }
+
+    /// The upper edge of the bucket of the `p` quantile, at most the max.
+    fn percentile(&self, p: f64) -> Duration {
+        if self.total == 0 {
+            return Duration::ZERO;
+        }
+        let rank = ((self.total - 1) as f64 * p).round() as u64;
+        let mut seen = 0u64;
+        for (ix, count) in self.counts.iter().enumerate() {
+            seen += u64::from(*count);
+            if seen > rank {
+                let edge = Duration::from_nanos(((ix as u128 + 1) * Self::BUCKET_NS) as u64);
+                return edge.min(self.max);
+            }
+        }
+        self.max
+    }
+
+    /// p50 / p99 / max in ms.
+    fn spread(&self) -> String {
+        format!(
+            "{:.2} / {:.2} / {:.2}",
+            ms(self.percentile(0.5)),
+            ms(self.percentile(0.99)),
+            ms(self.max),
+        )
+    }
+}
+
+/// The probe's write times by sequence, and the probe sequences the
+/// watcher saw published, drained as draws show them.
+struct ProbeLog {
+    /// Write times of the probes from sequence `first` on.
+    writes: std::collections::VecDeque<Instant>,
+    first: u64,
+    /// (the probe's sequence in a published snapshot, when the watcher saw
+    /// it), in order.
+    publishes: std::collections::VecDeque<(u64, Instant)>,
+}
+
+type SharedProbeLog = Arc<std::sync::Mutex<ProbeLog>>;
+
+impl ProbeLog {
+    fn shared() -> SharedProbeLog {
+        Arc::new(std::sync::Mutex::new(Self {
+            writes: Default::default(),
+            first: 1,
+            publishes: Default::default(),
+        }))
+    }
+
+    /// The write time of probe `seq`; drops the earlier ones.
+    fn take_write(&mut self, seq: u64) -> Option<Instant> {
+        while self.first < seq && self.writes.pop_front().is_some() {
+            self.first += 1;
+        }
+        if self.first != seq {
+            return None;
+        }
+        self.first += 1;
+        self.writes.pop_front()
+    }
+
+    /// When the watcher first saw probe `seq` or a later one published;
+    /// drops the publishes before it. Sequences are asked in order.
+    fn publish_of(&mut self, seq: u64) -> Option<Instant> {
+        while self
+            .publishes
+            .front()
+            .is_some_and(|(probe, _)| *probe < seq)
+        {
+            self.publishes.pop_front();
+        }
+        self.publishes.front().map(|(_, at)| *at)
+    }
+}
+
+/// Runs jobs on a real background executor, off the main thread (the
+/// headless test's own executor runs them on it), timing each.
+#[derive(Clone)]
+struct ThreadRunner {
+    executor: gpui_kit::BackgroundExecutor,
+    jobs: Arc<std::sync::Mutex<Vec<Duration>>>,
+}
+
+impl ThreadRunner {
+    fn take(&self) -> Vec<Duration> {
+        std::mem::take(&mut *self.jobs.lock().expect("not poisoned"))
+    }
+}
+
+impl gpui_kit_grid::TaskRunner for ThreadRunner {
+    fn run(&self, job: Box<dyn FnOnce() + Send>, _: &App) -> gpui_kit::Task<()> {
+        let jobs = self.jobs.clone();
+        self.executor.spawn(async move {
+            let started = Instant::now();
+            job();
+            jobs.lock().expect("not poisoned").push(started.elapsed());
+        })
+    }
+}
+
+struct StormBlotter;
+
+impl LiveGridDelegate for StormBlotter {
+    type Row = StormRow;
+}
+
+/// The storm's columns, 160 px each: all twelve on screen.
+fn storm_schema() -> GridSchema<StormColumn> {
+    StormColumn::all()
+        .iter()
+        .fold(GridSchema::new(), |schema, &column| {
+            schema.column(GridColumn::new(column, column.id()).with_width(px(160.)))
+        })
+}
+
+struct PictureRoot<D: LiveGridDelegate> {
+    grid: Entity<LiveGridState<D>>,
+    samples: Samples,
+    marks: DrawMarks,
+    probe: ProbeReader,
+}
+
+impl<D: LiveGridDelegate> Render for PictureRoot<D> {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        Timed::new(
+            div()
+                .size_full()
+                .child(LiveGrid::new(&self.grid).xsmall().bordered(false)),
+            self.samples.clone(),
+        )
+        .marked(self.marks.clone(), self.probe.clone())
+    }
+}
+
+/// A grid in a headless window over a store on `executor`, its rebuilds on
+/// `executor` too, with `rows` loaded and the row `probe` painted.
+struct PictureGrid<D: LiveGridDelegate> {
+    harness: Harness,
+    grid: Entity<LiveGridState<D>>,
+    store: gpui_kit_grid::GridStore<D::Row>,
+    marks: DrawMarks,
+    runner: ThreadRunner,
+}
+
+fn picture_grid<D: LiveGridDelegate>(
+    executor: &gpui_kit::BackgroundExecutor,
+    schema: GridSchema<<D::Row as GridRow>::Column>,
+    delegate: D,
+    view: ViewSpec<D::Row>,
+    rows: Vec<Arc<D::Row>>,
+    probe: <D::Row as GridRow>::Key,
+    probe_seq: fn(&D::Row) -> u64,
+) -> PictureGrid<D> {
+    let store = gpui_kit_grid::GridStore::<D::Row>::builder(StoreOptions::default())
+        .build_on(executor.clone());
+    let writer = store.writer();
+    writer.replace_all(rows);
+    let _ = smol::block_on(writer.flush());
+    let runner = ThreadRunner {
+        executor: executor.clone(),
+        jobs: Arc::default(),
+    };
+    let mut cx = headless();
+    let samples: Samples = Rc::default();
+    let marks: DrawMarks = Rc::default();
+    let (window, root) = cx
+        .update(|cx| {
+            let (store, runner, samples, marks, probe) = (
+                store.clone(),
+                runner.clone(),
+                samples.clone(),
+                marks.clone(),
+                probe.clone(),
+            );
+            gpui_kit::open_window(window_options(), cx, move |_, cx| {
+                let grid = cx.new(|cx| {
+                    LiveGridState::new(schema, delegate, store, cx)
+                        .with_view(view)
+                        .with_task_runner(runner)
+                });
+                let reader: ProbeReader = {
+                    let grid = grid.clone();
+                    Rc::new(move |cx: &App| {
+                        grid.read(cx)
+                            .snapshot()
+                            .get(&probe)
+                            .map_or(0, |row| probe_seq(row))
+                    })
+                };
+                cx.new(|_| PictureRoot {
+                    grid,
+                    samples,
+                    marks,
+                    probe: reader,
+                })
+            })
+        })
+        .expect("open headless window");
+    let grid = cx.read_entity(&root, |root, _| root.grid.clone());
+    let mut harness = Harness {
+        cx,
+        window,
+        samples,
+    };
+    // Load and rebuild on the real threads, warm the caches.
+    let started = Instant::now();
+    let mut ticks = 0;
+    loop {
+        std::thread::sleep(FRAME);
+        harness.tick();
+        ticks += 1;
+        let shown = harness
+            .cx
+            .read_entity(&grid, |grid, _| grid.visible_keys().contains(&probe));
+        if shown && ticks >= 30 {
+            break;
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(30),
+            "the S44 probe row must be painted"
+        );
+    }
+    harness.take();
+    marks.borrow_mut().clear();
+    runner.take();
+    PictureGrid {
+        harness,
+        grid,
+        store,
+        marks,
+        runner,
+    }
+}
+
+/// A producer thread paced on the wall clock: `rate` events a second, each
+/// written by `event` (given the time since the start), and a probe every
+/// millisecond, written by `probe` with its sequence (from 1) right after
+/// its write time went to `log`. Stops after `duration` or once `stop` is
+/// set; returns the events written.
+fn spawn_producer(
+    rate: u32,
+    duration: Duration,
+    log: SharedProbeLog,
+    stop: Arc<AtomicBool>,
+    mut event: impl FnMut(Duration) + Send + 'static,
+    mut probe: impl FnMut(u64) + Send + 'static,
+) -> std::thread::JoinHandle<u64> {
+    std::thread::spawn(move || {
+        let started = Instant::now();
+        let (mut events, mut seq) = (0u64, 0u64);
+        loop {
+            let elapsed = started.elapsed();
+            if elapsed >= duration || stop.load(Ordering::Relaxed) {
+                break;
+            }
+            let due = (f64::from(rate) * elapsed.as_secs_f64()) as u64;
+            let chunk = (events + 256).min(due);
+            while events < chunk {
+                event(elapsed);
+                events += 1;
+            }
+            if u128::from(seq) < elapsed.as_millis() {
+                seq += 1;
+                if let Ok(mut log) = log.lock() {
+                    log.writes.push_back(Instant::now());
+                }
+                probe(seq);
+            }
+            if events >= due {
+                std::thread::sleep(Duration::from_micros(200));
+            }
+        }
+        events
+    })
+}
+
+/// Wakes with every publish of `store` and logs the probe's sequence in it.
+fn spawn_watcher<R: GridRow>(
+    store: &gpui_kit_grid::GridStore<R>,
+    probe: R::Key,
+    probe_seq: fn(&R) -> u64,
+    log: SharedProbeLog,
+    stop: Arc<AtomicBool>,
+) -> std::thread::JoinHandle<()> {
+    let subscription = store.subscribe();
+    std::thread::spawn(move || {
+        let mut seen = 0;
+        while next_publish(&subscription, &stop) {
+            let now = Instant::now();
+            let (snapshot, _) = subscription.take();
+            let seq = snapshot.get(&probe).map_or(0, |row| probe_seq(row));
+            if seq > seen {
+                seen = seq;
+                if let Ok(mut log) = log.lock() {
+                    log.publishes.push_back((seq, now));
+                }
+            }
+        }
+    })
+}
+
+/// Samples the process's resident memory every 2 s: the largest since the
+/// last take.
+#[derive(Clone, Default)]
+struct RssSampler {
+    largest: Arc<std::sync::Mutex<f64>>,
+}
+
+impl RssSampler {
+    fn spawn(&self, stop: Arc<AtomicBool>) -> std::thread::JoinHandle<()> {
+        let largest = self.largest.clone();
+        std::thread::spawn(move || {
+            while !stop.load(Ordering::Relaxed) {
+                let rss = rss_mb();
+                if let Ok(mut largest) = largest.lock() {
+                    *largest = largest.max(rss);
+                }
+                for _ in 0..20 {
+                    if stop.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+            }
+        })
+    }
+
+    fn take(&self) -> f64 {
+        self.largest
+            .lock()
+            .map(|mut largest| std::mem::take(&mut *largest))
+            .unwrap_or_default()
+    }
+}
+
+/// A draw that showed new probes: their sequences, when the snapshot was
+/// pulled (the draw's start less the pull's time) and when the draw ended;
+/// `counted` false while the view scrolls (the probe row is off screen).
+struct Shown {
+    seqs: std::ops::RangeInclusive<u64>,
+    pulled: Instant,
+    drawn: Instant,
+    counted: bool,
+}
+
+/// One minute of a picture run.
+struct PictureMinute {
+    frames: usize,
+    late: usize,
+    frame_p50: Duration,
+    frame_p99: Duration,
+    frame_max: Duration,
+    over_8: usize,
+    over_16: usize,
+    latency_p50: Duration,
+    latency_p99: Duration,
+    queue_max: usize,
+    stamp_mb: f64,
+    rss_mb: f64,
+    text_entries: usize,
+    rebuilds: usize,
+    rebuild_p99: Duration,
+}
+
+/// What a picture run measured.
+struct PictureRun {
+    seconds: f64,
+    ticks: usize,
+    drawn: usize,
+    late: usize,
+    /// UI thread per tick: the draw (the longest of the tick's draws) and
+    /// the pulls.
+    frames: Histogram,
+    over_8: usize,
+    over_16: usize,
+    /// Main thread per tick: everything the harness ran in it.
+    ticks_main: Histogram,
+    draws: Histogram,
+    pulls: Histogram,
+    total: Histogram,
+    write_publish: Histogram,
+    publish_pull: Histogram,
+    pull_draw: Histogram,
+    own: Histogram,
+    no_publish: u64,
+    rebuilds: Histogram,
+    queue_max: usize,
+    minutes: Vec<PictureMinute>,
+}
+
+/// Matches the probes of `shown` with their writes and publishes.
+fn resolve_shown(
+    shown: Shown,
+    log: &SharedProbeLog,
+    run: &mut PictureRun,
+    minute: &mut Vec<Duration>,
+) {
+    let Ok(mut log) = log.lock() else {
+        return;
+    };
+    for seq in shown.seqs {
+        let Some(written) = log.take_write(seq) else {
+            continue;
+        };
+        let published = log.publish_of(seq);
+        if !shown.counted {
+            continue;
+        }
+        let total = shown.drawn.saturating_duration_since(written);
+        run.total.add(total);
+        minute.push(total);
+        let Some(published) = published else {
+            run.no_publish += 1;
+            continue;
+        };
+        let write_publish = published.saturating_duration_since(written);
+        let pull_draw = shown.drawn.saturating_duration_since(shown.pulled);
+        run.write_publish.add(write_publish);
+        run.publish_pull
+            .add(shown.pulled.saturating_duration_since(published));
+        run.pull_draw.add(pull_draw);
+        run.own.add(write_publish + pull_draw);
+    }
+}
+
+/// Ticks `grid` every 16 ms of the wall clock for `duration`, scrolling a
+/// new page every tick for the first `fling` of every minute, and measures
+/// what reaches the picture. `log` is fed by the producer and the watcher.
+fn picture_frames<D: LiveGridDelegate>(
+    grid: &mut PictureGrid<D>,
+    log: &SharedProbeLog,
+    duration: Duration,
+    fling: Option<Duration>,
+    rss: &RssSampler,
+) -> PictureRun {
+    let mut run = PictureRun {
+        seconds: 0.,
+        ticks: 0,
+        drawn: 0,
+        late: 0,
+        frames: Histogram::new(),
+        over_8: 0,
+        over_16: 0,
+        ticks_main: Histogram::new(),
+        draws: Histogram::new(),
+        pulls: Histogram::new(),
+        total: Histogram::new(),
+        write_publish: Histogram::new(),
+        publish_pull: Histogram::new(),
+        pull_draw: Histogram::new(),
+        own: Histogram::new(),
+        no_publish: 0,
+        rebuilds: Histogram::new(),
+        queue_max: 0,
+        minutes: Vec::new(),
+    };
+    let stats = |grid: &mut PictureGrid<D>| {
+        grid.harness
+            .cx
+            .read_entity(&grid.grid, |grid, _| grid.stats())
+    };
+    let (mut minute_frames, mut minute_latencies) = (Vec::new(), Vec::new());
+    let (mut minute_late, mut minute_queue, mut minute_over_8, mut minute_over_16) = (0, 0, 0, 0);
+    let mut pending: std::collections::VecDeque<Shown> = Default::default();
+    let mut shown_seq = 0u64;
+    let (mut page_ix, mut was_scrolling) = (0usize, false);
+    let started = Instant::now();
+    let mut deadline = started;
+    let mut minute_end = started + Duration::from_secs(60);
+    rss.take();
+    loop {
+        let now = Instant::now();
+        let elapsed = now - started;
+        let last = elapsed >= duration;
+        if !last {
+            deadline += FRAME;
+            if deadline > now {
+                std::thread::sleep(deadline - now);
+            } else {
+                run.late += 1;
+                minute_late += 1;
+                deadline = now;
+            }
+        }
+        // A minute ends (or the run): its summary, off the frames.
+        if last || Instant::now() >= minute_end {
+            minute_end += Duration::from_secs(60);
+            let jobs = grid.runner.take();
+            for job in &jobs {
+                run.rebuilds.add(*job);
+            }
+            let (stamp_bytes, text_entries) = (
+                grid.store.snapshot().stamp_bytes(),
+                grid.harness
+                    .cx
+                    .read_entity(&grid.grid, |grid, _| grid.text_stats().entries()),
+            );
+            if !minute_frames.is_empty() {
+                run.minutes.push(PictureMinute {
+                    frames: minute_frames.len(),
+                    late: minute_late,
+                    frame_p50: percentile(&minute_frames, 0.5),
+                    frame_p99: percentile(&minute_frames, 0.99),
+                    frame_max: percentile(&minute_frames, 1.0),
+                    over_8: minute_over_8,
+                    over_16: minute_over_16,
+                    latency_p50: percentile(&minute_latencies, 0.5),
+                    latency_p99: percentile(&minute_latencies, 0.99),
+                    queue_max: minute_queue,
+                    stamp_mb: stamp_bytes as f64 / 1e6,
+                    rss_mb: rss.take(),
+                    text_entries,
+                    rebuilds: jobs.len(),
+                    rebuild_p99: percentile(&jobs, 0.99),
+                });
+            }
+            minute_frames.clear();
+            minute_latencies.clear();
+            (minute_late, minute_queue, minute_over_8, minute_over_16) = (0, 0, 0, 0);
+        }
+        if last {
+            break;
+        }
+        // S45: a new page every tick for the first `fling` of a minute,
+        // then back to the top, where the probe is.
+        let scrolling = fling.is_some_and(|fling| {
+            Duration::from_secs_f64((Instant::now() - started).as_secs_f64() % 60.) < fling
+        });
+        if scrolling || was_scrolling {
+            let page = grid
+                .harness
+                .cx
+                .read_entity(&grid.grid, |grid, _| grid.visible_keys().len().max(1));
+            page_ix = if scrolling { page_ix + 1 } else { 0 };
+            grid.harness.cx.update(|cx| {
+                grid.grid
+                    .update(cx, |grid, cx| grid.scroll_to_row(page_ix * page, cx))
+            });
+        }
+        let queue = grid.store.stats().pending();
+        minute_queue = minute_queue.max(queue);
+        run.queue_max = run.queue_max.max(queue);
+        let seen = stats(grid);
+        let tick_started = Instant::now();
+        grid.harness.tick();
+        run.ticks_main.add(tick_started.elapsed());
+        let now = stats(grid);
+        let pulled = now.snapshots() - seen.snapshots();
+        let pull = now.last_pull() * pulled as u32;
+        let marks = std::mem::take(&mut *grid.marks.borrow_mut());
+        grid.harness.take();
+        let draw = marks
+            .iter()
+            .map(|mark| mark.ended - mark.started)
+            .max()
+            .unwrap_or_default();
+        if pulled > 0 {
+            run.pulls.add(now.last_pull());
+        }
+        if !marks.is_empty() {
+            run.drawn += 1;
+            run.draws.add(draw);
+        }
+        let frame = draw + pull;
+        run.frames.add(frame);
+        minute_frames.push(frame);
+        if frame > Duration::from_millis(8) {
+            run.over_8 += 1;
+            minute_over_8 += 1;
+        }
+        if frame > Duration::from_millis(16) {
+            run.over_16 += 1;
+            minute_over_16 += 1;
+        }
+        run.ticks += 1;
+        for mark in marks {
+            if mark.probe > shown_seq {
+                pending.push_back(Shown {
+                    seqs: shown_seq + 1..=mark.probe,
+                    pulled: mark
+                        .started
+                        .checked_sub(now.last_pull())
+                        .unwrap_or(mark.started),
+                    drawn: mark.ended,
+                    counted: !scrolling && !was_scrolling,
+                });
+                shown_seq = mark.probe;
+            }
+        }
+        was_scrolling = scrolling;
+        while pending
+            .front()
+            .is_some_and(|shown| shown.drawn.elapsed() >= S44_RESOLVE_AFTER)
+        {
+            let shown = pending.pop_front().expect("checked above");
+            resolve_shown(shown, log, &mut run, &mut minute_latencies);
+        }
+    }
+    run.seconds = (Instant::now() - started).as_secs_f64();
+    // The last draws, once the watcher has seen their publishes.
+    std::thread::sleep(S44_RESOLVE_AFTER);
+    for shown in pending {
+        resolve_shown(shown, log, &mut run, &mut Vec::new());
+    }
+    run
+}
+
+/// One S44 cell: what the producer sends, the picture run, and the
+/// threads stopped. Returns the run and the events sent a second.
+fn picture_cell<D: LiveGridDelegate>(
+    grid: &mut PictureGrid<D>,
+    duration: Duration,
+    fling: Option<Duration>,
+    probe: <D::Row as GridRow>::Key,
+    probe_seq: fn(&D::Row) -> u64,
+    producer: impl FnOnce(SharedProbeLog, Arc<AtomicBool>) -> std::thread::JoinHandle<u64>,
+) -> (PictureRun, f64) {
+    let log = ProbeLog::shared();
+    let stop = Arc::new(AtomicBool::new(false));
+    let rss = RssSampler::default();
+    let sampler = rss.spawn(stop.clone());
+    let watcher = spawn_watcher(&grid.store, probe, probe_seq, log.clone(), stop.clone());
+    let producer = producer(log.clone(), stop.clone());
+    let run = picture_frames(grid, &log, duration, fling, &rss);
+    stop.store(true, Ordering::Relaxed);
+    let sent = producer.join().expect("producer");
+    watcher.join().expect("watcher");
+    sampler.join().expect("sampler");
+    let rate = sent as f64 / run.seconds;
+    (run, rate)
+}
+
+/// The S2 cell of S44 and S45: the P2 rows (100k × 40), sorted by "Price
+/// 1" descending, 10k updates a second on random keys from a producer
+/// thread, and the probe on key 0 at the top.
+fn picture_quotes(
+    pools: &Pools,
+    executor: &gpui_kit::BackgroundExecutor,
+    duration: Duration,
+    fling: Option<Duration>,
+) -> (PictureGrid<Blotter>, PictureRun, f64) {
+    let mut rng = fastrand::Rng::with_seed(44);
+    let mut model: Vec<Quote> = (0..ROWS).map(|id| pools.row(&mut rng, id)).collect();
+    model[S44_QUOTE_PROBE as usize].prices[0] = S44_PROBE_PRICE;
+    model[S44_QUOTE_PROBE as usize].sizes[S44_PROBE_SIZE] = 0;
+    let probe_seq: fn(&Quote) -> u64 = |quote| quote.sizes[S44_PROBE_SIZE] as u64;
+    let mut grid = picture_grid(
+        executor,
+        schema(),
+        Blotter,
+        ViewSpec::new().with_sort([(Col(1), SortDirection::Descending)]),
+        model.iter().cloned().map(Arc::new).collect(),
+        S44_QUOTE_PROBE,
+        probe_seq,
+    );
+    let writer = grid.store.writer();
+    let (run, sent) = picture_cell(
+        &mut grid,
+        duration,
+        fling,
+        S44_QUOTE_PROBE,
+        probe_seq,
+        |log, stop| {
+            let mut probe = model[S44_QUOTE_PROBE as usize].clone();
+            let probe_writer = writer.clone();
+            spawn_producer(
+                (S2_UPDATES * 60) as u32,
+                duration,
+                log,
+                stop,
+                move |_| {
+                    let id = rng.usize(1..ROWS as usize);
+                    mutate(&mut rng, &mut model[id]);
+                    writer.upsert(model[id].clone());
+                },
+                move |seq| {
+                    probe.sizes[S44_PROBE_SIZE] = seq as i64;
+                    probe_writer.upsert(probe.clone());
+                },
+            )
+        },
+    );
+    (grid, run, sent)
+}
+
+/// A storm cell of S44: S42's alert rows over `keys` keys drawn by a Zipf
+/// law at `rate` events a second, S42's view (sorted by the count, grouped
+/// by one column of 16 groups, `Sum` of the count, all expanded) and the
+/// probe first under the first caption.
+fn picture_storm(
+    executor: &gpui_kit::BackgroundExecutor,
+    keys: u32,
+    rate: u32,
+    duration: Duration,
+) -> (PictureGrid<StormBlotter>, PictureRun, f64) {
+    let probe_seq: fn(&StormRow) -> u64 = |row| row.probe;
+    let probe_row = |seq: u64| StormRow {
+        key: S44_STORM_PROBE,
+        count: S44_PROBE_COUNT,
+        value: 0.,
+        last: 0,
+        probe: seq,
+    };
+    let rows = (0..keys)
+        .map(|key| {
+            Arc::new(StormRow {
+                key,
+                count: 0,
+                value: 0.,
+                last: 0,
+                probe: 0,
+            })
+        })
+        .chain([Arc::new(probe_row(0))])
+        .collect();
+    let mut grid = picture_grid(
+        executor,
+        storm_schema(),
+        StormBlotter,
+        ViewSpec::new()
+            .with_sort([(StormColumn::Count, SortDirection::Descending)])
+            .with_group_by([GroupBy::column(StormColumn::Group)])
+            .with_aggregates([(StormColumn::Count, Aggregate::Sum)]),
+        rows,
+        S44_STORM_PROBE,
+        probe_seq,
+    );
+    let writer = grid.store.writer();
+    let (run, sent) = picture_cell(
+        &mut grid,
+        duration,
+        None,
+        S44_STORM_PROBE,
+        probe_seq,
+        |log, stop| {
+            let mut rng = fastrand::Rng::with_seed(42);
+            let sampler = KeySampler::new(keys, KeyChoice::Zipf, &mut rng);
+            let mut counts = vec![0i64; keys as usize];
+            let probe_writer = writer.clone();
+            spawn_producer(
+                rate,
+                duration,
+                log,
+                stop,
+                move |elapsed| {
+                    let key = sampler.sample(&mut rng);
+                    counts[key as usize] += 1;
+                    writer.upsert(StormRow {
+                        key,
+                        count: counts[key as usize],
+                        value: rng.f64(),
+                        last: elapsed.as_millis() as i64,
+                        probe: 0,
+                    });
+                },
+                move |seq| probe_writer.upsert(probe_row(seq)),
+            )
+        },
+    );
+    (grid, run, sent)
+}
+
+/// One S44 row of the report.
+fn report_picture<D: LiveGridDelegate>(
+    name: &str,
+    load: &str,
+    grid: &mut PictureGrid<D>,
+    run: &PictureRun,
+    sent: f64,
+) {
+    let overhead = grid.harness.overhead();
+    out!(
+        "| {name} | {load} | {:.0}k | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} / {} | {} | {} ({}) | {:.2} |",
+        sent / 1e3,
+        run.total.total,
+        run.total.spread(),
+        run.write_publish.spread(),
+        run.publish_pull.spread(),
+        run.pull_draw.spread(),
+        run.own.spread(),
+        run.frames.spread(),
+        run.draws.spread(),
+        run.pulls.spread(),
+        run.drawn,
+        run.ticks,
+        run.late,
+        run.rebuilds.spread(),
+        run.rebuilds.total,
+        ms(overhead),
+    );
+}
+
+/// S44: from a write to the picture, under the S2 load and two cells of
+/// S42's storm (Zipf over 10k keys at 100k and 1M events a second).
+fn scenario_write_to_picture(pools: &Pools) {
+    let seconds = std::env::var("SPIKE_S44_SECONDS")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(S44_SECONDS);
+    let duration = Duration::from_secs_f64(seconds);
+    let platform = gpui_kit::platform::current_platform(true);
+    let executor = platform.background_executor();
+    out!(
+        "\n## S44: write to picture, {seconds} s per cell, load at start {}\n",
+        load_average()
+    );
+    out!(
+        "A producer thread writes to a store on real threads and, every millisecond, a probe: a painted row whose sequence column changes. The harness ticks the headless window every 16 ms of the wall clock; a tick runs the main thread's work (the grid's pull of the snapshot, the draw). Write → picture: from the write call of a probe to the end of the first draw that shows it or a later one, for every probe while the view stays. The end of the draw is the end of the grid subtree's paint on the main thread: GPUI's work after it (the last column, measured apart) and the GPU, compositor and display are not in it. Publish → pull is mostly the wait for the harness's next tick (a display's frame interval costs the same wait); the grid's own part is write → publish plus pull → end of draw. Frame: the UI thread per tick (the draw and the pull). All figures p50 / p99 / max, ms.\n"
+    );
+    out!(
+        "| Cell | Load (1, 5, 15 min) | Sent/s | Probes | Write → picture | Write → publish | Publish → pull | Pull → end of draw | Grid's own part | Frame (UI thread) | Draw | Pull | Ticks drawn / ticks | Late ticks | Rebuild (count) | GPUI after the subtree, ms |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    );
+    let load = load_average();
+    let (mut grid, run, sent) = picture_quotes(pools, &executor, duration, None);
+    report_picture(
+        "S44 S2 load: 100k rows, 10k/s on random keys, sorted by a changing column",
+        &load,
+        &mut grid,
+        &run,
+        sent,
+    );
+    drop(grid);
+    for rate in [100_000, 1_000_000] {
+        let load = load_average();
+        let (mut grid, run, sent) = picture_storm(&executor, 10_000, rate, duration);
+        report_picture(
+            &format!(
+                "S44 storm: Zipf 1.1 over 10k keys, {}k/s, grouped by 16, Sum",
+                rate / 1_000
+            ),
+            &load,
+            &mut grid,
+            &run,
+            sent,
+        );
+    }
+    out!("\nload at end {}", load_average());
+}
+
+/// S45 (`SPIKE_SOAK_MINUTES`): the S2 cell of S44 for `minutes`, the view
+/// scrolling a new page every tick for the first 10 s of every minute.
+fn scenario_soak(pools: &Pools, minutes: f64) {
+    let platform = gpui_kit::platform::current_platform(true);
+    let executor = platform.background_executor();
+    let load = load_average();
+    out!(
+        "\n## S45: soak, the S2 load for {minutes} min, load at start {load}, RSS at start {:.0} MB\n",
+        rss_mb()
+    );
+    out!(
+        "The S2 cell of S44 (100k rows × 40 columns, 10k updates/s on random keys from a producer thread, sorted by a changing column, a probe every ms), ticked every 16 ms of the wall clock; for the first {} s of every minute the view scrolls to a new page every tick, then back to the top. Frame: the UI thread per tick (the draw and the snapshot pull). Write → picture only while the view stays. The run's own samples are kept in fixed-size histograms (10 µs buckets).\n",
+        S45_FLING.as_secs()
+    );
+    let duration = Duration::from_secs_f64(minutes * 60.);
+    let (mut grid, run, sent) = picture_quotes(pools, &executor, duration, Some(S45_FLING));
+    let overhead = grid.harness.overhead();
+    out!("| Measurement | Result |\n|---|---|");
+    out!(
+        "| Run | {:.1} min, {} ticks, {} drew, {} late; sent {:.0}k/s; GPUI after the subtree {:.2} ms |",
+        run.seconds / 60.,
+        run.ticks,
+        run.drawn,
+        run.late,
+        sent / 1e3,
+        ms(overhead),
+    );
+    out!(
+        "| Frame (UI thread: draw + pull), whole run | p50 {:.2} ms, p99 {:.2} ms, p99.9 {:.2} ms, max {:.2} ms; over 8 ms: {} frames, over 16 ms: {} |",
+        ms(run.frames.percentile(0.5)),
+        ms(run.frames.percentile(0.99)),
+        ms(run.frames.percentile(0.999)),
+        ms(run.frames.max),
+        run.over_8,
+        run.over_16,
+    );
+    out!(
+        "| Main thread per tick, whole run | p50 {:.2} ms, p99 {:.2} ms, p99.9 {:.2} ms, max {:.2} ms |",
+        ms(run.ticks_main.percentile(0.5)),
+        ms(run.ticks_main.percentile(0.99)),
+        ms(run.ticks_main.percentile(0.999)),
+        ms(run.ticks_main.max),
+    );
+    out!(
+        "| Write → picture, view still (p50 / p99 / max, ms) | {} over {} probes; write → publish {}; publish → pull {}; pull → end of draw {}; grid's own part {}; {} without a publish seen |",
+        run.total.spread(),
+        run.total.total,
+        run.write_publish.spread(),
+        run.publish_pull.spread(),
+        run.pull_draw.spread(),
+        run.own.spread(),
+        run.no_publish,
+    );
+    out!(
+        "| Rebuilds (background), whole run | {} jobs, p50 / p99 / max {} ms; queue at most {} writes |",
+        run.rebuilds.total,
+        run.rebuilds.spread(),
+        run.queue_max,
+    );
+    out!(
+        "\n| Minute | Ticks | Late | Frame p50, ms | p99, ms | max, ms | > 8 ms | > 16 ms | Write → picture p50 / p99, ms | Queue max | Highlight stamps, MB | RSS max, MB | Text cache entries | Rebuilds (p99, ms) |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+    );
+    for (ix, minute) in run.minutes.iter().enumerate() {
+        out!(
+            "| {} | {} | {} | {:.2} | {:.2} | {:.2} | {} | {} | {:.2} / {:.2} | {} | {:.2} | {:.0} | {} | {} ({:.1}) |",
+            ix + 1,
+            minute.frames,
+            minute.late,
+            ms(minute.frame_p50),
+            ms(minute.frame_p99),
+            ms(minute.frame_max),
+            minute.over_8,
+            minute.over_16,
+            ms(minute.latency_p50),
+            ms(minute.latency_p99),
+            minute.queue_max,
+            minute.stamp_mb,
+            minute.rss_mb,
+            minute.text_entries,
+            minute.rebuilds,
+            ms(minute.rebuild_p99),
+        );
+    }
+    out!(
+        "\nload at end {}; RSS at end {:.0} MB",
+        load_average(),
+        rss_mb()
+    );
+}
+
 fn main() {
     let pools = Pools::new();
+    if let Some(minutes) = std::env::var("SPIKE_SOAK_MINUTES")
+        .ok()
+        .and_then(|value| value.parse::<f64>().ok())
+    {
+        scenario_soak(&pools, minutes);
+        return;
+    }
+    if std::env::var_os("SPIKE_EVERY_CELL_ONLY").is_some() {
+        header();
+        scenario_every_cell(&pools);
+        return;
+    }
+    if std::env::var_os("SPIKE_PICTURE_ONLY").is_some() {
+        scenario_write_to_picture(&pools);
+        return;
+    }
     if std::env::var_os("SPIKE_S24_ONLY").is_some() {
         scenario_rate_sweep(&pools);
         return;
@@ -6636,6 +8046,8 @@ fn main() {
     scenario_datatable(&pools, true);
     // DataTable and the grid under the S2 load, with and without scrolling.
     scenario_storm_tables(&pools);
+    // Every painted cell changing every frame, on both.
+    scenario_every_cell(&pools);
     scenario_fade(&pools);
     // Groups on screen.
     let s16_p50 = scenario_grouped_p2(&pools, false);
@@ -6685,4 +8097,5 @@ fn main() {
     // S24: the update rate sweep, after every other scenario.
     scenario_rate_sweep(&pools);
     scenario_keyed_storm();
+    scenario_write_to_picture(&pools);
 }
