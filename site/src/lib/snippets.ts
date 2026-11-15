@@ -36,7 +36,11 @@ export function snippet(src: string, theme: string | null, app = 'quotes'): stri
   );
 }
 
-/** CodePen's prefill API: one `data` field, JSON. */
+/**
+ * CodePen's prefill API: one `data` field, JSON. `/pen/define` opens the
+ * Classic editor; CodePen 2.0 takes `/cpe/pen/define/` for now (without
+ * `editors`) and says `/pen/define` becomes 2.0's once Classic goes.
+ */
 export function codePen(html: string): Prefill {
   const data = { title: TITLE, description: DESCRIPTION, html, css: CSS, js: '', editors: '110' };
   return { action: 'https://codepen.io/pen/define', fields: { data: JSON.stringify(data) } };
@@ -71,7 +75,9 @@ export function stackBlitz(html: string): Prefill {
 
 /**
  * MDN Playground: the code in the address, `?state=` the base64 of the
- * deflated JSON `{html, css, js}`, as MDN's playground writes it.
+ * deflated JSON `{html, css, js}`, as MDN's playground writes it. MDN
+ * shows code from a link opened from another site with a Run button: it
+ * runs after the visitor's click.
  */
 export async function mdnPlayground(html: string): Promise<string> {
   const json = new TextEncoder().encode(JSON.stringify({ html, css: CSS, js: '' }));

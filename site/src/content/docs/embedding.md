@@ -54,6 +54,23 @@ As a guest, the example keeps to itself:
   failing silently. Snippet sites differ: some allow it in their preview,
   others do not.
 
+### On snippet sites and blogs
+
+The snippet starts everywhere below. What differs is copying: a frame can
+only grant what its parent frame grants, so the first iframe a page puts
+around the snippet decides.
+
+| Where | Copy |
+| --- | --- |
+| Your own page, a Ghost HTML card, a self-hosted WordPress Custom HTML block | works |
+| JSFiddle editor, CodePen Full Page view, StackBlitz (`html` and `node` previews), LiveCodes | works |
+| CodePen editor, MDN Playground, CodeSandbox embeds, JS Bin | shows the notice |
+| dev.to, Medium, Hashnode and Discourse posts (through a pen, fiddle or project embed) | shows the notice |
+
+The MDN Playground opens a shared link with the code shown and a Run
+button: the example starts after that click. GitHub READMEs run no
+scripts and no frames; link to an example's page with a picture instead.
+
 `live-grid.js` stores nothing in the browser and loads no analytics. It
 fetches the example's module and fonts from this site.
 
