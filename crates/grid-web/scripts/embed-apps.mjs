@@ -83,5 +83,8 @@ export async function answerCelestrak(chrome, elements, asked) {
 }
 
 export const COPY_NOTICE = 'Copy needs clipboard permission on this site';
-// A console line that means the example broke.
-export const FATAL = /panicked|RuntimeError|already borrowed|unreachable|TypeError|Uncaught|GRID_ERROR/i;
+// A console line that means the example broke, or stopped drawing: after a
+// lost GPU device or graphics context the canvas stays as it was, while the
+// module's `stats()` goes on counting.
+export const FATAL =
+  /panicked|RuntimeError|already borrowed|unreachable|TypeError|Uncaught|GRID_ERROR|device lost|context was lost|rendering has stopped/i;

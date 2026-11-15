@@ -292,6 +292,12 @@ async function runCase(platform, app, top) {
   const HOLDER = `!!document.querySelector('iframe[data-example]')`;
   const BOX = mode === 'page' ? `document.querySelector('iframe[data-example]')` : ELEMENT;
   try {
+    // Chrome's headless shell refuses every clipboard write until asked:
+    // the permission is granted as a reader's click on the prompt would,
+    // and a frame's `allow` still decides, as in a window.
+    await chrome
+      .browser('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] })
+      .catch(() => {});
     await send('Runtime.enable');
     await send('Page.enable');
     await send('Log.enable');
