@@ -47,6 +47,50 @@ Every limit holds in both runs. The ingest and highlight memory rows come from t
 
 On the S1 load (1500 visible cells, 2k updates a second) gpui-kit's `DataTable`, which builds an element per cell, takes 12–14 ms a frame; the grid, which paints glyphs from one element, about 1.1 ms.
 
+### Against DataTable under the S2 load, sorted and scrolled
+
+On S1 nothing moves, so it compares painting only. S6c puts `DataTable` under the S2 load: 100k rows × 40 columns, 166 updates a frame on random keys (10k a second), shown sorted by the column the updates change, descending. S6d also scrolls to a new page every frame. `DataTable` addresses rows by index and calls its delegate on the UI thread, so the delegate keeps the order there, in one of three ways: it sorts the whole order every frame (what an application writes first), removes and reinserts each updated row by binary search, or removes the changed rows in one pass and merges them back, redrawing only when the rows on screen changed. Every delegate stores rows by key and formats every row once at setup, as the fast delegate of S6b does, so a cell only clones a string. S2c and S3c run the grid under the same load and scrolling.
+
+The figure is the UI thread's time per frame. For `DataTable` it is the update, the upkeep of the order and the draw; for the grid, the draw and the pull of the store's snapshot, while the grid's rebuilds run on a background thread. When the test platform draws more than once in a 16 ms interval, only the longest draw counts, as a display draws once. Release build of `472ff88` (`SPIKE_STORM_ONLY=1`), two runs, on a machine that was not idle (load average 7–28).
+
+| Scenario | p50, ms | p99, ms | max, ms |
+|---|---|---|---|
+| Grid, S2 load (S2c) | 0.01 | 1.38–1.51 | 1.51–2.14 |
+| The same, the 66 frames of 300 that draw | 1.20–1.27 | 1.45–1.90 | 1.51–2.14 |
+| `DataTable`, sort every frame (S6c) | 13.5–13.6 | 16.4–16.5 | 19.8–42.5 |
+| `DataTable`, binary search per update (S6c) | 13.1–13.5 | 14.2–17.8 | 15.7–33.8 |
+| `DataTable`, one-pass merge, redrawn on change (S6c) | 0.33–0.34 | 12.7–13.0 | 13.2–13.7 |
+| The same, the 22 frames of 300 that draw | 12.4–12.7 | 13.2–13.7 | 13.2–13.7 |
+| Grid, S2 load and a new page every frame (S3c) | 1.21–1.22 | 2.85–3.14 | 4.41–4.48 |
+| `DataTable`, the same, sort every frame (S6d) | 36.4–36.8 | 38.6–50.9 | 39.1–72.3 |
+| `DataTable`, the same, binary search per update (S6d) | 36.4–38.0 | 41.4–44.9 | 42.4–56.6 |
+| `DataTable`, the same, one-pass merge (S6d) | 34.2–35.4 | 37.2–38.1 | 37.9–38.9 |
+
+Keeping the order costs `DataTable` little: 1.5 ms a frame to sort everything (p99 3.0–3.5 ms), 0.3–0.4 ms to merge. The draw is the cost: about 12 ms for a page that changes in place, 34–37 ms for a new page every frame. While the view scrolls under the load, the grid's UI thread works 28–29 times less than with the best `DataTable` delegate at the median and 12–13 times less at p99. With the view still, both skip the frames in which nothing on screen changed, and a frame that draws costs the grid about 10 times less. The grid's rebuilds took p50 3.6–3.8 ms and p99 4.0–6.6 ms on the background thread, one every 100 ms.
+
+The comparison leaves out three things. The grid shows a new order at most every 100 ms (its rebuild interval), the `DataTable` delegates every frame. Outside the measured subtree GPUI spends 0.4 ms a frame with the grid and 1.6–1.9 ms with `DataTable`. The grid's ingest runs on a background thread, which in the headless test is the main thread: counting it, installing each rebuilt order and every extra draw, the grid's main thread with the view scrolling takes at most p50 3.2 ms and p99 8.6–8.8 ms, against 36–37 ms and 39–40 ms for the best `DataTable` delegate.
+
+### Every visible cell changing every frame (S43)
+
+S43 writes a new value into every column of every painted row, every frame: about 1,450 cells on screen, 1,400 of them changed (all but the Id, which is the row's key), so 84k cell changes a second at 60 fps. Each new value reads differently from the last: prices move by 0.02 to 1 and show two decimals, sizes move by 1 to 100, and each text column takes another text. With "texts from the pools" the texts come from the benchmark's pools of a few hundred, so they repeat and a text cache can keep them; with "every text new" each carries a counter and has never been shown before, so every changed text has to be shaped. Each runs with the view still (sorted by the key) and with the S2 load on top (166 more updates a frame on random keys, sorted by the column the updates change). `DataTable` runs the same through the fast delegate of S6c: cells formatted once per change, rows kept by key, and under the S2 load the order kept by the one-pass merge.
+
+The figure is the UI thread's time per frame, as in S2c and S6c: for the grid the draw and the snapshot pull, for `DataTable` the update, the upkeep of the order and the draw. Release build of `7b9fa2b` (`SPIKE_EVERY_CELL_ONLY=1`), two runs, load average 3.4–4.4.
+
+| Scenario | p50, ms | p99, ms | max, ms |
+|---|---|---|---|
+| Grid, view still, texts from the pools | 1.08–1.09 | 2.42–2.45 | 4.72–4.74 |
+| `DataTable`, the same | 32.6–33.1 | 36.1–36.9 | 36.8–60.1 |
+| Grid, view still, every text new | 14.5 | 15.6–17.6 | 19.6–20.2 |
+| `DataTable`, the same | 41.2–41.4 | 43.9–46.8 | 50.3–80.2 |
+| Grid, S2 load, texts from the pools | 1.21–1.23 | 2.54–2.66 | 4.50–4.67 |
+| `DataTable`, the same | 33.4–33.5 | 35.6–36.3 | 36.7–42.8 |
+| Grid, S2 load, every text new | 14.6 | 15.7–15.9 | 17.8–18.9 |
+| `DataTable`, the same | 41.7–41.9 | 44.6–51.3 | 46.4–84.1 |
+
+The text cache does hide a cost, and the two variants show how much. The grid lays numbers out from a table of digit glyphs and never shapes them: 70% of its cells. Texts it shapes once and keeps; with pooled texts 0.1% of the painted cells needed shaping. When every text is new, about 420 texts a frame (29% of the cells) go to the platform's shaper, and the frame takes 14.5 ms instead of 1.1 ms: over the 8 ms limit of S1, though inside a 16 ms frame at p99 in three of the four runs. `DataTable` shapes every text that was not on screen in the frame before (GPUI's line cache keeps two frames): an estimated 75% of its cells with pooled texts, 96% with every text new. Free text that changes in every visible cell every frame is the one load here under which the grid's frame is not small; numbers, and texts from a bounded set, keep it near 1 ms.
+
+Under the S2 load the grid's main thread also runs the ingest of the updates, a background task that the headless test runs on it: counting that and every extra draw, p50 3.3 ms and p99 7.6–7.8 ms with pooled texts, 16.8–16.9 ms and 22.4–22.6 ms with every text new.
+
 ## Stage 3 scenarios
 
 Release build of the stage 3 code on an idle machine (load average 2.4–5.0), 100k rows × 40 columns. In the same run S1 and S2 stay at frame p99 1.09 ms and 1.33 ms.
@@ -82,6 +126,41 @@ S42 sends events from a producer thread to keys drawn by a Zipf law (s = 1.1: a 
 
 With uniform keys and up to 1M events/s almost nothing merges, so only the default policy runs. At 2M/s over 100k uniform keys the ingest falls behind with either policy: by key slowly, keeping every write collapses. The frame budget holds in every cell, and the UI's snapshot pull stays under 0.25 ms. A stream of new keys (every event a new key) is the case the grid does not absorb: rows, rebuild time and memory grow with it, so such streams need aggregation before the grid.
 
+## From a write to the picture (S44)
+
+S44 measures how long a value takes from the producer's write call to the screen. A producer thread writes to a store whose ingest and rebuilds run on real background threads, and every millisecond it also writes a probe: a row at the top of the view whose painted column carries a sequence number. A watcher thread subscribed to the store notes when each probe is published. The harness ticks the headless window every 16 ms of the wall clock, as a display would, and each tick runs what the main thread does: the grid's pull of the snapshot and the draw. Each draw notes which probe it painted.
+
+For every probe written while the view stays (about 10,000 per cell), the time runs from the write call to the end of the first draw that shows it or a later value. The end of the draw is the end of the grid's paint on the main thread. GPUI's work after it (0.2–0.6 ms, measured apart), the GPU, the compositor and the display are not in the figure; on a real screen they add about a frame. The figure splits into write → publish (the queue and the store's 8 ms pause between publishes), publish → pull (mostly the wait for the harness's next tick: a display's frame interval costs the same wait, and the grid pulls at most every 8 ms), and pull → end of draw. The grid's own part is write → publish plus pull → end of draw. Release build of `7b9fa2b` (`SPIKE_PICTURE_ONLY=1`), 10 s per cell, two runs, load average 2.8–4.0. Figures are p50 / p99 / max in ms; ranges span both runs.
+
+| Load | Write → picture | Write → publish | Publish → pull | Pull → end of draw | Grid's own part |
+|---|---|---|---|---|---|
+| S2: 100k rows, 10k updates/s on random keys, sorted by a changing column | 12.6–12.7 / 25.4–26.0 / 34–54 | 6.0 / 11.9–12.2 / 31–33 | 4.7 / 15.1–16.2 / 18–20 | 1.2–1.3 / 2.2–2.6 / 3.1–8.5 | 7.3–7.4 / 13.6–13.7 / 34–36 |
+| S42 storm: Zipf over 10k keys, 100k events/s, grouped | 12.4–12.6 / 24.5–25.2 / 29–31 | 5.4–5.6 / 11.0–11.2 / 13–14 | 5.4–5.6 / 15.7–16.6 / 17–18 | 1.2–1.3 / 2.2–2.4 / 4.8–4.9 | 6.6–6.9 / 12.7–12.8 / 16–17 |
+| S42 storm: Zipf over 10k keys, 1M events/s, grouped | 13.0–13.2 / 25.6–25.9 / 34 | 6.1–6.4 / 12.2–13.0 / 16–17 | 5.2–5.6 / 15.8–16.4 / 19 | 1.0 / 1.6–1.8 / 2.1–2.7 | 7.0–7.5 / 13.4–14.4 / 18 |
+
+A value reaches the end of a draw in about 13 ms at the median and 25–26 ms at p99, at 10k, 100k and 1M events a second alike. Half of that is the harness's frame: the wait for the next tick. Of the grid's own 7 ms, most is the store's pause between publishes, which batches writes (`StoreOptions::with_publish_interval`); the pull and the draw take 1–1.3 ms. The frame on the UI thread stayed at p99 1.8–2.9 ms in every cell. The largest values, 34–54 ms in the S2 cell, come from rare write → publish spikes of 31–33 ms, seen in both runs and not in the storm cells; their cause is not yet known.
+
+## Thirty minutes of the S2 load (S45)
+
+The other scenarios run for seconds. S45 runs the S2 cell of S44 for 30 minutes: 100k rows × 40 columns, 10k updates a second on random keys from a producer thread, sorted by a changing column, the probe every millisecond, the window ticked every 16 ms of the wall clock. For the first 10 s of every minute the view scrolls to a new page every tick, then returns to the top. The frame is the UI thread's time per tick (the draw and the snapshot pull); write → picture counts only while the view stays. Resident memory is sampled every 2 s, highlight memory at the end of each minute. Release build of `7b9fa2b` (`SPIKE_SOAK_MINUTES=30`, not part of the full run), one run, load average 2.9 at the start and 3.9 at the end.
+
+| Over the whole run | Result |
+|---|---|
+| Frames (ticks) | 112,290 |
+| Frame p50 / p99 / p99.9 / max | 1.29 / 2.28 / 4.16 / 230 ms |
+| Frames over 8 ms; over 16 ms | 17; 6 |
+| Write → picture p50 / p99 | 13.0 / 28.9 ms, over 1.5 million probes |
+| Rebuilds (background) p50 / p99 | 4.6 / 7.7 ms, 17,520 jobs |
+
+| Minute | Frame p99, ms | Write → picture p99, ms | Queue max | Highlight memory, MB | Resident memory, MB |
+|---|---|---|---|---|---|
+| 1 | 2.21 | 24.9 | 125 | 2.29 | 296 |
+| 10 | 2.00 | 25.9 | 132 | 2.79 | 245 |
+| 20 | 1.83 | 25.4 | 139 | 2.47 | 255 |
+| 30 | 2.27 | 34.0 | 191 | 2.79 | 244 |
+
+Nothing drifts. Frame p99 stays between 1.8 and 2.9 ms in every minute, highlight memory between 2.3 and 2.8 MB, the grid's text cache at about 190 entries, and resident memory falls from about 300 MB in the first minutes to 240–270 MB, where it stays (237 MB at the end). The queue between the producer and the ingest holds at most 120–190 writes in a typical minute. Six frames went over 16 ms, four of them in one minute, the longest at 230 ms, with the queue at 519 writes and one rebuild at 456 ms in the same minute: a stall of the whole process rather than of one frame. Two stretches of three minutes (minutes 12–14 and 28–30) had about 120 late ticks a minute instead of 10–20, and write → picture p99 rose from about 25.5 ms to 33.5 ms there while the frame did not change: the harness's sleeps overran, which points at the machine. The benchmark ran on a desktop that was not otherwise idle, and neither cause was confirmed.
+
 ## In the browser
 
 On GPUI's web platform the rebuilds run on the main thread. [Web](../web/#figures) has frame times for each demo page in headless Chrome.
@@ -96,6 +175,6 @@ cargo run --release -p gpui-kit-grid --features test-support --example spike_ben
 python3 -I script/spike_charts.py target/bench-run.md target/bench-charts
 ```
 
-The first command runs every scenario and writes a Markdown report with each result against its limit; the second draws the charts from it. Close other applications first: the tails (p99) are sensitive to a busy machine.
+The first command runs every scenario and writes a Markdown report with each result against its limit; the second draws the charts from it. `SPIKE_EVERY_CELL_ONLY=1` and `SPIKE_PICTURE_ONLY=1` run S43 or S44 alone, and `SPIKE_SOAK_MINUTES=30` runs the soak (S45) and nothing else. Close other applications first: the tails (p99) are sensitive to a busy machine.
 
 For an application of your own, `MTL_HUD_ENABLED=1` shows the frame rate on macOS, and `samply record cargo run --release --example <name>` profiles it. `BLOTTER_SECONDS=10 ROWS=100000 RATE=10000 cargo run --release -p gpui-kit-grid --example blotter` runs the windowed `blotter` under the S2 load and prints its counters.
