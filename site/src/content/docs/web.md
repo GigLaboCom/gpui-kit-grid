@@ -42,6 +42,7 @@ A release build of every example takes about 160 s from scratch; a change to one
 | `make examples` | The desk's, the broker's and orbit's themes and keys in headless Chrome |
 | `make survive` | Drags and copies that once stopped a page, in headless Chrome |
 | `make embed-check` | `<live-grid>` inline and in a frame on another site's page |
+| `make embed-sites` | The snippet in the frames of each snippet platform and blog host (JSFiddle, CodePen, StackBlitz, MDN, dev.to …) |
 | `make licenses` | The licences and third-party notices of what the pages serve |
 | `make site` | The release build for a public site: notices required, only servable data |
 

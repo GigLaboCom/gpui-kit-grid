@@ -13,13 +13,14 @@
 # input, `make examples` the desk's, the broker's and orbit's views and
 # keys, `make survive` that every page survives the gestures that once
 # stopped it (drags, and copying over plain http), `make embed-check` that
-# `<live-grid>` still works on another site's page (run it on every
+# `<live-grid>` still works on another site's page and `make embed-sites`
+# in each snippet platform's and blog host's frames (run both on every
 # gpui-kit or GPUI upgrade). The checks serve www/ themselves, or run
 # against a served one with ORIGIN=http://127.0.0.1:8091/. `make site-dist`
 # stages the site build under the site's dist/demo/, `make posters` draws
 # the site's poster of each example.
 
-.PHONY: build build-dev site site-dist posters licenses serve gateway measure measure-feed input examples survive embed-check orbit-site clean
+.PHONY: build build-dev site site-dist posters licenses serve gateway measure measure-feed input examples survive embed-check embed-sites orbit-site npm-pack clean
 
 build: ## Release build into www/pkg/<app>/ (APP=desk for one)
 	./scripts/build-wasm.sh --release
@@ -63,8 +64,14 @@ survive: ## Drags and copies in headless Chrome, each page alive after (OUT=<dir
 embed-check: ## <live-grid> inline and in a frame on another site's page, in headless Chrome (OUT=<dir>, APPS=quotes,wiki)
 	node scripts/embed-check.mjs
 
+embed-sites: ## The <live-grid> snippet in each snippet platform's and blog host's frames, in headless Chrome (SITES=jsfiddle-editor,mdn-editor, SOURCE=<live-grid.js URL>, OUT=<dir>)
+	node scripts/embed-sites.mjs
+
 orbit-site: ## The orbit page's CelesTrak mode in headless Chrome, CelesTrak mocked
 	node scripts/orbit-site.mjs
+
+npm-pack: ## The <live-grid> npm packages from a site build into target/npm/, listed by npm pack --dry-run; publishes nothing (DRAFT=1 without a site build, SCOPE=, VERSION=)
+	node scripts/npm-pack.mjs $(if $(DRAFT),--draft) $(if $(SCOPE),--scope=$(SCOPE)) $(if $(VERSION),--version=$(VERSION))
 
 clean:
 	rm -rf www/pkg www/licenses target

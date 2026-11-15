@@ -90,6 +90,10 @@ export async function launch(flags = []) {
   return {
     send,
     browser: (method, params = {}) => call(method, params),
+    // The page's session, and a call to another session: a frame's or a
+    // worker's, from the `sessionId` of a `Target.attachedToTarget`.
+    sessionId,
+    sendTo: (session, method, params = {}) => call(method, params, session),
     // Listens to the browser's own events (`Fetch.enable` sent to `browser`
     // pauses the requests of every page and frame there).
     onBrowser(listener) {

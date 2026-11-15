@@ -10,8 +10,9 @@
 //   or orbit's elements from CelesTrak after a click in the element);
 // - `mode`: `inline` (the default) runs the example's module in this page,
 //   its canvas inside the element; `frame` shows the example's page in an
-//   iframe (`allow="clipboard-write; fullscreen"`), which keeps its
-//   keyboard shortcuts away from this page's;
+//   iframe (`allow="clipboard-write; fullscreen"`, credentialless on a
+//   cross-origin isolated page), which keeps its keyboard shortcuts away
+//   from this page's;
 // - `theme`: a theme remix, as JSON or packed (`v1.…`, as `/play/` and
 //   `#theme=` links carry it); changing it recolours the running example;
 // - `query`: the example's own parameters (`seed=7&rate=20`);
@@ -121,8 +122,11 @@ function fetchFace(file) {
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
-const canDraw = () =>
-  'gpu' in navigator || Boolean(document.createElement('canvas').getContext('webgl2'));
+// A WebGPU adapter, or WebGL 2. A browser may offer `navigator.gpu` with no
+// adapter behind it (a blocklisted GPU, WebGPU switched off).
+const canDraw = async () =>
+  Boolean(await navigator.gpu?.requestAdapter().catch(() => null)) ||
+  Boolean(document.createElement('canvas').getContext('webgl2'));
 
 class LiveGrid extends HTMLElement {
   static observedAttributes = ['theme'];
@@ -235,7 +239,7 @@ class LiveGrid extends HTMLElement {
   }
 
   async #startInline() {
-    if (!canDraw()) throw new Error('this browser can draw neither WebGPU nor WebGL 2');
+    if (!(await canDraw())) throw new Error('this browser can draw neither WebGPU nor WebGL 2');
     const app = this.app;
     const query = this.#query();
     // The example's setup, asked at once as its page asks it: a download
@@ -291,6 +295,10 @@ class LiveGrid extends HTMLElement {
     const frame = document.createElement('iframe');
     frame.title = `gpui-kit-grid ${this.app} example`;
     frame.allow = 'clipboard-write; fullscreen';
+    // A cross-origin isolated page (COEP, as WebContainers previews) loads
+    // no frame that does not send COEP itself, as the example's page does
+    // not, unless the frame is credentialless.
+    if (window.crossOriginIsolated) frame.credentialless = true;
     const theme = this.getAttribute('theme');
     const hash = theme ? `#theme=${await packTheme(await themeJson(theme))}` : '';
     frame.src = new URL(`${this.app}/${this.#query()}${hash}`, DEMO).href;

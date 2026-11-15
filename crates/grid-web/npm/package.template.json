@@ -1,0 +1,21 @@
+{
+  "name": "{{name}}",
+  "version": "{{version}}",
+  "description": "{{description}}",
+  "license": "Apache-2.0",
+  "homepage": "https://gkg.giglabo.com/embedding/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GigLaboCom/gpui-kit-grid.git",
+    "directory": "crates/grid-web"
+  },
+  "bugs": "https://github.com/GigLaboCom/gpui-kit-grid/issues",
+  "keywords": ["gpui-kit-grid", "live-grid", "webassembly", "demo"],
+  "type": "module",
+  "sideEffects": true,
+  "files": [],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

@@ -21,7 +21,7 @@ about a 7 MB download.
 | Attribute | What it does |
 | --- | --- |
 | `app` | The example: `quotes` (the default), `desk`, `broker`, `ops`, `orbit`, `transit`, `wiki` or `ships`. |
-| `mode` | `inline` (the default) runs the example in your page, its canvas inside the element. `frame` shows the example's page in an iframe with `allow="clipboard-write; fullscreen"`: its keyboard shortcuts stay inside, and copying works there. |
+| `mode` | `inline` (the default) runs the example in your page, its canvas inside the element. `frame` shows the example's page in an iframe with `allow="clipboard-write; fullscreen"` (credentialless on a cross-origin isolated page, such as a StackBlitz WebContainers preview): its keyboard shortcuts stay inside, and copying works there. |
 | `theme` | A theme remix: JSON, or packed as `v1.…` the way Play and `#theme=` links carry it. Changing the attribute recolours the running example. |
 | `query` | The example's own parameters, such as `seed=7&rate=20`. |
 | `autoload` | Starts the example once the element is on screen. Without it, and on touch screens or with Save-Data, a button starts it. |
@@ -53,6 +53,23 @@ As a guest, the example keeps to itself:
   notice, "Copy needs clipboard permission on this site", instead of
   failing silently. Snippet sites differ: some allow it in their preview,
   others do not.
+
+### On snippet sites and blogs
+
+The snippet starts everywhere below. What differs is copying: a frame can
+only grant what its parent frame grants, so the first iframe a page puts
+around the snippet decides.
+
+| Where | Copy |
+| --- | --- |
+| Your own page, a Ghost HTML card, a self-hosted WordPress Custom HTML block | works |
+| JSFiddle editor, CodePen Full Page view, StackBlitz (`html` and `node` previews), LiveCodes | works |
+| CodePen editor, MDN Playground, CodeSandbox embeds, JS Bin | shows the notice |
+| dev.to, Medium, Hashnode and Discourse posts (through a pen, fiddle or project embed) | shows the notice |
+
+The MDN Playground opens a shared link with the code shown and a Run
+button: the example starts after that click. GitHub READMEs run no
+scripts and no frames; link to an example's page with a picture instead.
 
 `live-grid.js` stores nothing in the browser and loads no analytics. It
 fetches the example's module and fonts from this site.

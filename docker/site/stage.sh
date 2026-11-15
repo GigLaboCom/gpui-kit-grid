@@ -49,7 +49,8 @@ rm "$dest/dist/_headers"
 find "$dest/dist" -type f -size +1k \
   \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.mjs' \
   -o -name '*.json' -o -name '*.svg' -o -name '*.xml' -o -name '*.txt' \
-  -o -name '*.wasm' -o -name '*.tsv' -o -name '*.jsonl' \) \
+  -o -name '*.wasm' -o -name '*.tsv' -o -name '*.jsonl' -o -name '*.ttf' \
+  -o -name '*.otf' \) \
   -exec gzip -9 -k -n {} +
 
 echo "stage.sh: $dest ($(du -sh "$dest/dist" | cut -f1) of site, $(grep -c '^map ' "$dest/headers-map.conf") header maps)"

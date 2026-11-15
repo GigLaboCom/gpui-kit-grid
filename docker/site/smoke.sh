@@ -99,6 +99,7 @@ if [[ -n "$wasm" ]]; then
   expect "/$wasm type" "$(header "/$wasm" Content-Type)" "application/wasm"
   expect "/$wasm gzip" "$(header "/$wasm" Content-Encoding -H 'Accept-Encoding: gzip')" "gzip"
   expect "/$wasm CORS" "$(header "/$wasm" Access-Control-Allow-Origin)" "[*]"
+  expect "/$wasm cache" "$(header "/$wasm" Cache-Control)" "no-cache"
 else
   echo "  skip  no wasm in $dist (a site without the demos)"
 fi

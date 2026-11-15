@@ -119,6 +119,8 @@ make -C crates/grid-web serve      # http://127.0.0.1:8080; PORT=8091 for anothe
 make -C crates/grid-web survive    # headless Chrome; also examples, input, measure
 make -C crates/grid-web embed-check  # <live-grid> on another site; on every gpui-kit/GPUI upgrade
 make -C crates/grid-web embed-check APPS=all  # and every example inline and in a frame, on recordings
+make -C crates/grid-web embed-sites  # the snippet in each platform's and blog host's frames; also on upgrades
+make -C crates/grid-web embed-sites SOURCE=https://gkg.giglabo.com/embed/v1/live-grid.js  # the published element
 make -C crates/grid-web site-dist API=target/doc  # the site build as files in site/dist/demo/ (after bun run build)
 make -C crates/grid-web posters      # the site's posters (site/public/posters/), offline inputs only
 make -C crates/grid-web measure QUERY='app=ops&storm' RATES=1,1,1  # ops in a storm
