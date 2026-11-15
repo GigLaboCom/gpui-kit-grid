@@ -1,5 +1,5 @@
-// The snippet Play hands out, and how each snippet site is opened with it
-// prefilled: a form posted to a new tab (CodePen, JSFiddle, StackBlitz) or
+// The snippet Play and the demo pages hand out, and how each snippet site
+// is opened with it prefilled: a form posted to a new tab (CodePen, JSFiddle, StackBlitz) or
 // a link with the code in it (MDN Playground). No account on either side;
 // the visitor's browser sends the form, and the site shows an unsaved
 // project.
@@ -16,8 +16,17 @@ export interface Prefill {
   fields: Record<string, string>;
 }
 
-const TITLE = 'gpui-kit-grid live quotes';
-const DESCRIPTION = 'A live gpui-kit-grid example (GPUI in WebAssembly), themed in Play.';
+/** What a prefilled project is called and says about itself. */
+export interface About {
+  title: string;
+  description: string;
+}
+
+/** Play's project: the quotes in the visitor's theme. */
+const PLAY: About = {
+  title: 'gpui-kit-grid live quotes',
+  description: 'A live gpui-kit-grid example (GPUI in WebAssembly), themed in Play.',
+};
 const CSS = 'body { margin: 0; background: #16191e; }\nlive-grid { height: 100vh; }\n';
 
 /** Escapes text for an HTML attribute in double quotes. */
@@ -41,31 +50,31 @@ export function snippet(src: string, theme: string | null, app = 'quotes'): stri
  * Classic editor; CodePen 2.0 takes `/cpe/pen/define/` for now (without
  * `editors`) and says `/pen/define` becomes 2.0's once Classic goes.
  */
-export function codePen(html: string): Prefill {
-  const data = { title: TITLE, description: DESCRIPTION, html, css: CSS, js: '', editors: '110' };
+export function codePen(html: string, about: About = PLAY): Prefill {
+  const data = { ...about, html, css: CSS, js: '', editors: '110' };
   return { action: 'https://codepen.io/pen/define', fields: { data: JSON.stringify(data) } };
 }
 
 /** JSFiddle's "display a fiddle from POST", without a framework. */
-export function jsFiddle(html: string): Prefill {
+export function jsFiddle(html: string, about: About = PLAY): Prefill {
   return {
     action: 'https://jsfiddle.net/api/post/library/pure/',
-    fields: { title: TITLE, description: DESCRIPTION, html, css: CSS, js: '' },
+    fields: { ...about, html, css: CSS, js: '' },
   };
 }
 
 /** StackBlitz's POST API with its static `html` template. */
-export function stackBlitz(html: string): Prefill {
+export function stackBlitz(html: string, about: About = PLAY): Prefill {
   const page =
     '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8" />\n' +
-    `<title>${TITLE}</title>\n<link rel="stylesheet" href="style.css" />\n</head>\n<body>\n` +
+    `<title>${about.title}</title>\n<link rel="stylesheet" href="style.css" />\n</head>\n<body>\n` +
     html +
     '</body>\n</html>\n';
   return {
     action: 'https://stackblitz.com/run',
     fields: {
-      'project[title]': TITLE,
-      'project[description]': DESCRIPTION,
+      'project[title]': about.title,
+      'project[description]': about.description,
       'project[template]': 'html',
       'project[files][index.html]': page,
       'project[files][style.css]': CSS,

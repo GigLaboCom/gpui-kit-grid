@@ -1,0 +1,94 @@
+---
+title: 'Trading blotter: a live trade blotter example'
+description: A trading blotter that runs in your browser. Orders fill against simulated quotes and join a live list, beside positions marked to the same prices.
+tableOfContents: false
+sidebar:
+  label: Trade blotter
+head:
+  - tag: meta
+    attrs:
+      property: og:image
+      content: https://gkg.giglabo.com/posters/blotter.webp
+  - tag: meta
+    attrs:
+      property: og:image:alt
+      content: An order blotter with six filled orders, between a watchlist and an order ticket
+---
+
+import EmbedSnippet from '../../components/EmbedSnippet.astro';
+import LiveDemo from '../../components/LiveDemo.astro';
+
+<LiveDemo
+	wide={68}
+	eager
+	demo={{
+		app: 'broker',
+		query: 'seed=7',
+		poster: 'blotter',
+		note: 'Runs in this page, with an empty blotter to fill. Full screen shows every column.',
+	}}
+	label="A trade blotter, the broker example after six orders"
+/>
+
+A trade blotter is the running record of an account's or a desk's orders
+and trades: the time, instrument, side, quantity, price and status of
+each, kept current while the market moves. The picture above is one, and
+it runs: an order placed in the ticket fills against the quotes and joins
+the list. Every price is simulated and no order leaves the page.
+
+## Fill it yourself
+
+- **Alt+B** or **Alt+S** sets the ticket to buy or to sell the selected
+  instrument, and **Alt+Enter** submits it. A market order fills at once,
+  a buy at the ask and a sell at the bid; a limit order stays *Working*
+  until a quote reaches its price.
+- **Ctrl+2** shows the orders, newest first. **Ctrl+1** shows the
+  positions with their market value and profit and loss at the live
+  prices.
+
+## What makes it a live blotter
+
+Both lists are [gpui-kit-grid](../) grids: a data grid written in Rust for
+GPUI applications, here compiled to WebAssembly and drawn with WebGPU.
+
+- Rows are [addressed by key](../concepts/), so a fill updates its order
+  in place, and the selection stays on that order when the list re-sorts.
+- A cell that changes [flashes](../guides/live-changes/), up or down.
+- Sorting, filtering and [grouping with totals](../guides/grouping/) run
+  in the background, at [thousands of updates a second](../performance/).
+
+## A terminal with a trades tape
+
+<LiveDemo
+	demo={{ app: 'desk', poster: 'desk', fullPageOnly: true }}
+	label="The desk example, a trading terminal with a trades tape and positions"
+/>
+
+The desk shows the same simulated market as a keyboard-first terminal: a
+tape of every trade, positions as a tree with their totals, an order book
+and a watchlist.
+
+## On the desktop
+
+Two of the repository's [examples](../examples/#native-only) are blotters
+in a native window: `blotter`, with grouping, a totals row and pinned
+columns, and `orders`, edited in place while the market streams in.
+
+```sh
+cargo run --release -p gpui-kit-grid --example blotter
+cargo run --release -p gpui-kit-grid --example orders
+```
+
+## Embed it
+
+Two lines show the broker on any page; [Embedding](../embedding/) has the
+element's attributes.
+
+<EmbedSnippet
+	app="broker"
+	about={{
+		title: 'Trade blotter example: live orders and positions',
+		description:
+			'A live trade blotter: orders fill against simulated quotes. A gpui-kit-grid example (Rust, GPUI in WebAssembly, WebGPU). https://gkg.giglabo.com/trade-blotter/',
+	}}
+/>

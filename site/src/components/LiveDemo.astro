@@ -6,7 +6,10 @@
 // it checks that the browser draws WebGPU or WebGL 2, or keeps the poster
 // and says why; on a phone, a touch screen or with Save-Data it says what
 // the download costs before the click. A keyboard-first demo (`desk`) opens
-// only on its full page.
+// only on its full page. `wide` is for a page about one demo: where the
+// window has the room, the demo is wider than the column of text, up to
+// that many rem (the quotes fill 50, the broker shows its orders from
+// about 64).
 //
 // In development `PUBLIC_DEMO_ORIGIN` points at served examples, as on
 // Play: `make -C crates/grid-web serve`, then
@@ -20,9 +23,14 @@ interface Props {
 	label: string;
 	/** The landing's demo: its poster loads at once, not when in view. */
 	eager?: boolean;
+	/**
+	 * Wider than the text's column on a wide window, up to this many rem;
+	 * for a page without a table of contents.
+	 */
+	wide?: number;
 }
 
-const { demo, label, eager = false } = Astro.props;
+const { demo, label, eager = false, wide } = Astro.props;
 const demoOrigin = import.meta.env.PUBLIC_DEMO_ORIGIN as string | undefined;
 const base = demoOrigin ? new URL(demoOrigin).href : withBase('/demo/');
 const query = demo.query ? `?${demo.query}` : '';
@@ -31,7 +39,13 @@ const framed = `${base}${demo.app}/?embed${demo.query ? `&${demo.query}` : ''}`;
 const poster = withBase(`/posters/${demo.poster}.webp`);
 ---
 
-<figure class="live-demo not-content" data-live-demo data-src={framed} data-label={label}>
+<figure
+	class:list={['live-demo', 'not-content', { wide }]}
+	style={wide ? `--wide-max: ${wide}rem` : undefined}
+	data-live-demo
+	data-src={framed}
+	data-label={label}
+>
 	<div class="stage" data-stage>
 		<img
 			src={poster}
@@ -141,9 +155,29 @@ const poster = withBase(`/posters/${demo.poster}.webp`);
 </script>
 
 <style>
+	/* After a heading or a paragraph of a page, Starlight's own gap above stays. */
 	.live-demo {
-		margin: 0;
+		margin-inline: 0;
+		margin-bottom: 0;
 		container-type: inline-size;
+	}
+	/*
+	 * Centred on the text's column, as wide as the pane beside the sidebar
+	 * allows, up to `wide`. Starlight centres the column there from 72rem,
+	 * on a page without a table of contents.
+	 */
+	@media (min-width: 72rem) {
+		.wide {
+			--wide: max(
+				100%,
+				min(
+					var(--wide-max),
+					calc(100vw - var(--sl-sidebar-width) - 2 * var(--sl-content-pad-x) - 1.5rem)
+				)
+			);
+			width: var(--wide);
+			margin-inline: calc((100% - var(--wide)) / 2);
+		}
 	}
 	.stage {
 		position: relative;

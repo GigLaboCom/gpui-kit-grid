@@ -1,0 +1,78 @@
+---
+title: 'WebGPU demo: a live data grid in the browser'
+description: A WebGPU demo to run in your browser. A data grid of 150 live quotes, every change highlighted, drawn by a Rust UI in WebAssembly, with a WebGL 2 fallback.
+tableOfContents: false
+sidebar:
+  label: WebGPU demo
+head:
+  - tag: meta
+    attrs:
+      property: og:image
+      content: https://gkg.giglabo.com/posters/quotes.webp
+  - tag: meta
+    attrs:
+      property: og:image:alt
+      content: A data grid of stock quotes grouped by sector, changed cells flashing green and red
+---
+
+import EmbedSnippet from '../../components/EmbedSnippet.astro';
+import GpuBackend from '../../components/GpuBackend.astro';
+import LiveDemo from '../../components/LiveDemo.astro';
+
+<LiveDemo
+	wide={50}
+	eager
+	demo={{ app: 'quotes', query: 'seed=7', poster: 'quotes' }}
+	label="A WebGPU demo, 150 simulated quotes in a live data grid"
+/>
+
+<GpuBackend />
+
+Most WebGPU demos are 3D scenes. This one is an application's interface:
+a data grid of 150 simulated quotes grouped by sector, where each cell
+that changes flashes green or red and the sector rows keep live averages.
+None of it is HTML. The table, its text and its scrollbars are drawn on
+one canvas, at about 300 updates a second.
+
+## How it is drawn
+
+- **The interface is [GPUI](https://gpui.rs/)**, the UI framework of
+  the Zed editor. It lays the window out and paints it on the GPU as
+  quads, glyphs and paths.
+- **The table is gpui-kit-grid**, a data grid for GPUI written in Rust.
+  One element paints the visible cells; sorting and grouping run in the
+  background, between frames in a browser.
+- **The page runs WebAssembly.** The same Rust code that opens a desktop
+  window is compiled for `wasm32-unknown-unknown`: about 7 MB to
+  download, loaded when you press the button.
+- **WebGPU first, WebGL 2 otherwise.** The demo asks the browser for a
+  WebGPU adapter and falls back to WebGL 2 without one. The
+  [same demo on WebGL 2](../demo/quotes/?backend=webgl) looks the same.
+
+## More WebGPU examples
+
+The same grid under other loads, each on a page of its own:
+
+- [a data center in an alert storm](../demo/ops/?storm): 5,760 hosts and
+  about 1,550 alert updates a second;
+- [a trading terminal](../demo/desk/): several grids, a candle chart and
+  an order book in one window;
+- [a trade blotter](../trade-blotter/) that fills as you place orders.
+
+[Examples](../examples/) has all eight that run in the browser,
+[Web](../web/) how they are built and their frame times, and
+[Performance](../performance/) the measurements on the desktop.
+
+## Embed it
+
+Two lines show this demo on any page, and [Play](../play/) recolours it
+first. [Embedding](../embedding/) has the element's attributes.
+
+<EmbedSnippet
+	app="quotes"
+	about={{
+		title: 'WebGPU demo: a live data grid of streaming quotes',
+		description:
+			'A WebGPU demo: a live data grid drawn by a Rust UI (GPUI) in WebAssembly, with a WebGL 2 fallback. https://gkg.giglabo.com/webgpu-demo/',
+	}}
+/>
