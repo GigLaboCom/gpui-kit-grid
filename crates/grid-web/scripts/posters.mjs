@@ -2,7 +2,9 @@
 // itself in headless Chrome, as the site's pages show it in a frame
 // (`?embed`, 800×450 CSS pixels, the width of a page's column, drawn at
 // 1.6× into 1280×720); the desk, which the site opens only on its own page,
-// as that page at 1280×720. Every poster comes from something fixed and offline:
+// as that page at 1280×720; and the trade blotter page's, the broker wide
+// enough for every column of its orders, after six of them (`blotter`).
+// Every poster comes from something fixed and offline:
 // the markets and ops from a seed, transit from a fixed time in Munich's
 // timetable and from Helsinki's recording, wiki and ships from their
 // recordings, orbit from the local `data/celestrak-active.json`, which the
@@ -12,7 +14,7 @@
 // Each poster is written at the highest WebP quality that keeps it under
 // LIMIT (150 kB), to $OUT/<name>.webp (default: the site's
 // `public/posters/`). Env: OUT, APPS (default every poster: quotes, desk,
-// broker, orbit, transit, helsinki, wiki, ships, ops), ORIGIN (a served
+// broker, blotter, orbit, transit, helsinki, wiki, ships, ops), ORIGIN (a served
 // www/ instead of this checkout's), CHROME, CHROME_FLAGS. Exits 1 if a page
 // shows no rows and gets no updates (then `<name>-failed.png` in OUT), or a
 // poster does not fit.
@@ -27,14 +29,38 @@ const OUT = process.env.OUT ?? fileURLToPath(new URL('../../../site/public/poste
 const LIMIT = 150 * 1000;
 const FRAME = [800, 450, 1.6]; // CSS width and height, scale
 const FULL_PAGE = [1280, 720, 1];
+const WIDE = [1440, 810, 1];
 const ELEMENTS = fileURLToPath(new URL('../../grid/examples/data/celestrak-active.json', import.meta.url));
+// Keys as DevTools takes them: the key, its code and number, the modifiers
+// (Alt 1, Ctrl 2) and the text it types, if any.
+const [ALT, CTRL] = [1, 2];
+const SUBMIT = ['Enter', 'Enter', 13, ALT, '\r'];
+const BUY = [['b', 'KeyB', 66, ALT], SUBMIT];
+const SELL = [['s', 'KeyS', 83, ALT], SUBMIT];
+// `rows` further down the broker's watchlist, which is sorted by symbol.
+const down = (rows) => [['w', 'KeyW', 87, ALT], ...Array(rows).fill(['ArrowDown', 'ArrowDown', 40, 0])];
+// The broker's orders, down its watchlist: AAPL bought, AMZN sold, JPM
+// bought, KO sold, MSFT bought, NVDA sold (the account holds what it
+// sells), then the Orders tab, which shows six rows at this size.
+const ORDERS = [
+  ...BUY,
+  ...[...down(2), ...SELL],
+  ...[...down(5), ...BUY],
+  ...[...down(1), ...SELL],
+  ...[...down(4), ...BUY],
+  ...[...down(3), ...SELL],
+  ['2', 'Digit2', 50, CTRL],
+];
 // The posters: the example, its query, how long it runs after its first
-// rows before the still (for highlights, a filled replay, a storm), and the
-// size it runs at.
+// rows before the still (for highlights, a filled replay, a storm), the
+// size it runs at, and what it is given first: a press at a point (an
+// embedded example takes the keyboard with the first press in it; here on
+// the watchlist's first row), then keys.
 const POSTERS = {
   quotes: { app: 'quotes', query: 'seed=7', settle: 4000 },
   desk: { app: 'desk', query: 'seed=7', settle: 5000, size: FULL_PAGE },
   broker: { app: 'broker', query: 'seed=7', settle: 4000 },
+  blotter: { app: 'broker', query: 'seed=7', settle: 2500, size: WIDE, press: [100, 197], keys: ORDERS },
   orbit: { app: 'orbit', query: 'data=local&time=2026-11-06T17:30:00Z', settle: 4000 },
   transit: { app: 'transit', query: 'time=2026-11-10T07:45', settle: 5000 },
   helsinki: { app: 'transit', query: 'city=helsinki&source=replay', settle: 8000 },
@@ -77,7 +103,7 @@ const pages = await site();
 const failures = [];
 try {
   for (const name of names) {
-    const { app, query, settle, size = FRAME } = POSTERS[name];
+    const { app, query, settle, size = FRAME, press, keys = [] } = POSTERS[name];
     const [WIDTH, HEIGHT, SCALE] = size;
     // The scale as a flag, not DevTools emulation: under emulation Chrome
     // reports the canvas's size at scale 1 (`input.mjs`). The size is
@@ -131,6 +157,28 @@ try {
         throw new Error(`no rows in ${START_MS / 1000} s (${name}-failed.png)`);
       }
       await evaluate('globalThis.fontsReady');
+      if (press) {
+        await sleep(1500);
+        for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
+          const button = type === 'mouseMoved' ? 'none' : 'left';
+          await send('Input.dispatchMouseEvent', { type, x: press[0], y: press[1], button, clickCount: 1 });
+          await sleep(100);
+        }
+      }
+      for (const [key, code, keyCode, modifiers, text] of keys) {
+        for (const type of [text ? 'keyDown' : 'rawKeyDown', 'keyUp']) {
+          await send('Input.dispatchKeyEvent', {
+            type,
+            key,
+            code,
+            windowsVirtualKeyCode: keyCode,
+            nativeVirtualKeyCode: keyCode,
+            modifiers,
+            ...(type === 'keyDown' && { text }),
+          });
+        }
+        await sleep(300);
+      }
       await sleep(settle);
       const [bytes, quality] = await still(send);
       writeFileSync(join(OUT, `${name}.webp`), bytes);
