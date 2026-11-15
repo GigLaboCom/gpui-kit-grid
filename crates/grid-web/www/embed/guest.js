@@ -54,7 +54,9 @@ export function creditLine({ notice, licenses }) {
   const link = document.createElement('a');
   link.href = licenses;
   link.target = '_blank';
-  link.rel = 'noopener';
+  // `nofollow`: the same link on every page that embeds an example is a
+  // widget link, which is not to pass for those pages' recommendation.
+  link.rel = 'noopener nofollow';
   link.textContent = 'Licenses';
   Object.assign(link.style, { color: 'inherit', textDecoration: 'underline' });
   line.append(link);

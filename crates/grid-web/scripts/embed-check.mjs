@@ -122,6 +122,12 @@ async function onPage(name, url, run, { celestrak = false } = {}) {
   let failed = false;
   let fatalSeen = 0;
   const { send, evaluate } = chrome;
+  // Chrome's headless shell refuses every clipboard write until asked: the
+  // permission is granted as a reader's click on the prompt would, and a
+  // frame's `allow` still decides, as in a window.
+  await chrome
+    .browser('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] })
+    .catch(() => {});
   const page = {
     send,
     evaluate,

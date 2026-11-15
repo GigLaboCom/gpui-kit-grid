@@ -79,6 +79,8 @@ export default defineConfig({
         },
         'cookbook',
         'examples',
+        // Pages about one demo each, by what a reader may be looking for.
+        { label: 'Live demos', items: ['webgpu-demo', 'trade-blotter'] },
         'performance',
         { slug: 'web', label: 'Web' },
         'play',

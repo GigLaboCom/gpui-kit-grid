@@ -3,7 +3,13 @@
 // input scripts share it.
 //
 // Env: CHROME (the browser binary), CHROME_FLAGS (extra flags, space
-// separated).
+// separated). Chrome's headless shell (`chrome-headless-shell`, which shows
+// no icon in the Dock) wants `CHROME_FLAGS="--use-angle=metal
+// --site-per-process"` on a Mac: without the first its WebGPU adapter is
+// SwiftShader, whose device is lost as an example starts, so the canvas
+// stays blank; without the second another site's frame is not a target of
+// its own, and the checks that look into one find none. `--enable-unsafe-webgpu`
+// is not needed there, and overrides the cases that switch WebGPU off.
 
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';

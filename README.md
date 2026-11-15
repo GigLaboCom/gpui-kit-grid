@@ -1,10 +1,10 @@
 # gpui-kit-grid
 
-A live data grid for [gpui-kit](https://gpui-kit.com) (GPUI) applications: hundreds of thousands of rows, thousands of updates per second from any thread, change highlight, sorting, filtering, grouping and trees in the background.
+A live GPUI data grid, for applications built with [gpui-kit](https://gpui-kit.com): a real-time table of hundreds of thousands of rows that takes thousands of updates per second from any thread, with change highlight and with sorting, filtering, grouping and trees in the background.
 
 [![The quotes example: simulated stock quotes grouped by sector, each changed cell flashing green or red with an arrow, and live totals on the sector rows](.github/assets/quotes.gif)](https://gkg.giglabo.com/demo/quotes/)
 
-The quotes example: every change highlighted as it arrives, live totals per sector. [Run it in the browser](https://gkg.giglabo.com/demo/quotes/).
+The quotes example: every change highlighted as it arrives, live totals per sector. [Run it in the browser](https://gkg.giglabo.com/demo/quotes/), where the examples are compiled to WebAssembly and drawn with WebGPU: the [WebGPU demo](https://gkg.giglabo.com/webgpu-demo/) page says how, and the [trade blotter](https://gkg.giglabo.com/trade-blotter/) page has one to fill.
 
 It is a separate crate on top of gpui-kit. Rows are addressed by key and written from any thread; a background ingest collapses updates by key and publishes snapshots; the order on screen is rebuilt in the background; one custom element paints the visible cells. The ideas come from the LiveGrid grid (WinForms), rethought for GPUI.
 

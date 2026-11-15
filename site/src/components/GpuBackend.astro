@@ -1,0 +1,86 @@
+---
+// What this browser will draw the demos with, asked the way `<live-grid>`
+// asks before it starts one: a WebGPU adapter, or else a WebGL 2 context.
+// Nothing is loaded for it and nothing leaves the page. Without scripts
+// the line stays as it is written here.
+---
+
+<p class="gpu-backend not-content" data-gpu-backend role="status">
+	<span class="dot" aria-hidden="true"></span>
+	<span data-text>
+		The demo draws with WebGPU where the browser has an adapter for it, and with WebGL 2 where
+		it has not.
+	</span>
+</p>
+
+<script>
+	// The adapter's vendor and architecture as the browser names them
+	// (`apple`, `metal-3`), where it tells.
+	interface AdapterInfo {
+		vendor?: string;
+		architecture?: string;
+	}
+	interface Adapter {
+		info?: AdapterInfo;
+	}
+	interface Gpu {
+		requestAdapter(): Promise<Adapter | null>;
+	}
+
+	const webgl2 = () => {
+		try {
+			return Boolean(document.createElement('canvas').getContext('webgl2'));
+		} catch {
+			return false;
+		}
+	};
+
+	async function show(line: HTMLElement) {
+		const text = line.querySelector<HTMLElement>('[data-text]')!;
+		const gpu = (navigator as Navigator & { gpu?: Gpu }).gpu;
+		const adapter = (await gpu?.requestAdapter().catch(() => null)) ?? null;
+		if (adapter) {
+			const named = [adapter.info?.vendor, adapter.info?.architecture].filter(Boolean).join(', ');
+			text.textContent = `This browser has a WebGPU adapter${named ? ` (${named})` : ''}: the demo draws with WebGPU here.`;
+			line.dataset.gpuBackend = 'webgpu';
+		} else if (webgl2()) {
+			text.textContent =
+				'This browser has no WebGPU adapter: the demo draws with WebGL 2 here, and looks the same.';
+			line.dataset.gpuBackend = 'webgl2';
+		} else {
+			text.textContent =
+				'This browser offers neither WebGPU nor WebGL 2: the demo cannot draw here, and the picture is what it shows elsewhere.';
+			line.dataset.gpuBackend = 'none';
+		}
+	}
+
+	for (const line of document.querySelectorAll<HTMLElement>('[data-gpu-backend]')) void show(line);
+</script>
+
+<style>
+	.gpu-backend {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		margin: 0.75rem 0 0;
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+		line-height: 1.5;
+	}
+	.dot {
+		flex: none;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 50%;
+		background: var(--sl-color-gray-4);
+	}
+	[data-gpu-backend='webgpu'] .dot {
+		background: var(--sl-color-accent);
+	}
+	[data-gpu-backend='webgl2'] .dot {
+		background: hsl(40, 90%, 50%);
+	}
+	[data-gpu-backend='none'] .dot {
+		background: hsl(0, 70%, 55%);
+	}
+</style>
