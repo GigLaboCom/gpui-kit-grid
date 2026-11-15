@@ -26,6 +26,10 @@
 //! # Painting and grouping alone: S1, S20, S2, S26, S16, S16b, S21 and the
 //! # grouped rebuilds (S16–S18, S21) on real threads
 //! SPIKE_PAINT_GROUP_ONLY=1 cargo run --release -p gpui-kit-grid --features test-support --example spike_bench
+//! # The grid against DataTable under the S2 load, sorted, with and without
+//! # scrolling: S1, S2, S3, S6 and S6b to compare with, then S2c, S6c, S3c
+//! # and S6d
+//! SPIKE_STORM_ONLY=1 cargo run --release -p gpui-kit-grid --features test-support --example spike_bench
 //! # Pending edits alone: S2 to compare with, then S27 and S28
 //! SPIKE_EDIT_ONLY=1 cargo run --release -p gpui-kit-grid --features test-support --example spike_bench
 //! # Row dragging alone: S2 to compare with, then S38 and S39
@@ -623,12 +627,12 @@ impl TableDelegate for TableBench {
     }
 }
 
-struct TableRoot {
-    table: Entity<TableState<TableBench>>,
+struct TableRoot<D: TableDelegate> {
+    table: Entity<TableState<D>>,
     samples: Samples,
 }
 
-impl Render for TableRoot {
+impl<D: TableDelegate> Render for TableRoot<D> {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         Timed::new(
             div()
@@ -2179,12 +2183,10 @@ fn scenario_fade(pools: &Pools) {
     );
 }
 
-fn scenario_datatable(pools: &Pools, fast: bool) {
-    let mut cx = headless();
-    let mut rng = fastrand::Rng::with_seed(7);
-    let rows: Vec<Quote> = (0..ROWS).map(|id| pools.row(&mut rng, id)).collect();
-    let order = display_order();
-    let columns: Vec<Column> = order
+/// The `DataTable` columns of the schema columns `order`, with the grid's
+/// titles and widths; numbers aligned right.
+fn table_columns(order: &[usize]) -> Vec<Column> {
+    order
         .iter()
         .map(|&ix| {
             let (title, width) = column_title_width(ix);
@@ -2195,24 +2197,19 @@ fn scenario_datatable(pools: &Pools, fast: bool) {
                 column
             }
         })
-        .collect();
+        .collect()
+}
+
+/// `delegate` in a `DataTable` in a headless window, drawn 30 times to warm
+/// its caches before measuring.
+fn table_harness<D: TableDelegate>(delegate: D) -> (Harness, Entity<TableState<D>>) {
+    let mut cx = headless();
     let samples: Samples = Rc::default();
     let (window, root) = cx
         .update(|cx| {
             gpui_kit::open_window(window_options(), cx, |window, cx| {
                 cx.new(|cx| TableRoot {
-                    table: cx.new(|cx| {
-                        TableState::new(
-                            TableBench {
-                                rows,
-                                columns,
-                                order,
-                                cache: fast.then(FxHashMap::default),
-                            },
-                            window,
-                            cx,
-                        )
-                    }),
+                    table: cx.new(|cx| TableState::new(delegate, window, cx)),
                     samples: samples.clone(),
                 })
             })
@@ -2232,6 +2229,20 @@ fn scenario_datatable(pools: &Pools, fast: bool) {
             .expect("window is open");
     }
     harness.take();
+    (harness, table)
+}
+
+fn scenario_datatable(pools: &Pools, fast: bool) {
+    let mut rng = fastrand::Rng::with_seed(7);
+    let rows: Vec<Quote> = (0..ROWS).map(|id| pools.row(&mut rng, id)).collect();
+    let order = display_order();
+    let columns = table_columns(&order);
+    let (mut harness, table) = table_harness(TableBench {
+        rows,
+        columns,
+        order,
+        cache: fast.then(FxHashMap::default),
+    });
     for _ in 0..FRAMES {
         harness.cx.update(|cx| {
             table.update(cx, |table, cx| {
@@ -2268,6 +2279,459 @@ fn scenario_datatable(pools: &Pools, fast: bool) {
         )
     };
     harness.report(name, FRAMES, &samples, notes);
+}
+
+// ---------------------------------------------------------------------------
+// S6c, S6d: DataTable under the S2 load, and the grid's UI-thread time under
+// the same load (S2c, S3c). `DataTable` addresses rows by index and calls its
+// delegate on the UI thread, so the delegate keeps the sorted order itself,
+// there; the grid sorts in the background and the UI thread pulls snapshots.
+// Both sides are compared by their UI-thread time per frame.
+
+/// The S2 load: updates a frame on random keys (10k/s at 60 fps).
+const S2_UPDATES: usize = 166;
+
+/// The draw a display would make in one frame interval: the longest of the
+/// draws recorded since `drawn`. The test platform draws at the end of every
+/// update that left the window dirty, so an interval may hold several draws
+/// where a display link draws once; their count goes to `extra`.
+fn frame_draw(samples: &Samples, drawn: usize, extra: &mut usize) -> Duration {
+    let samples = samples.borrow();
+    let draws = &samples[drawn..];
+    *extra += draws.len().saturating_sub(1);
+    draws.iter().max().copied().unwrap_or_default()
+}
+
+/// The UI-thread times `ui` of the frames that drew (`draws` not zero).
+fn drawn_frames(ui: &[Duration], draws: &[Duration]) -> Vec<Duration> {
+    ui.iter()
+        .zip(draws)
+        .filter(|(_, draw)| !draw.is_zero())
+        .map(|(ui, _)| *ui)
+        .collect()
+}
+
+/// p50, p99 and max of `samples`.
+fn spread(samples: &[Duration]) -> String {
+    format!(
+        "p50 {:.2} ms, p99 {:.2} ms, max {:.2} ms",
+        ms(percentile(samples, 0.5)),
+        ms(percentile(samples, 0.99)),
+        ms(percentile(samples, 1.0)),
+    )
+}
+
+/// The S2 order: "Price 1" (`Col(1)`) descending, then the key, so the
+/// order is total and every upkeep gives the same one.
+fn storm_order(rows: &[Quote], a: u32, b: u32) -> std::cmp::Ordering {
+    rows[b as usize].prices[0]
+        .total_cmp(&rows[a as usize].prices[0])
+        .then(a.cmp(&b))
+}
+
+/// How the S6c delegate keeps its order sorted as rows change, on the UI
+/// thread.
+#[derive(Clone, Copy)]
+enum OrderUpkeep {
+    /// What an application writes first: apply the updates, then sort the
+    /// whole order (`sort_by`, stable; it finds the runs of the order that
+    /// is already almost sorted).
+    SortAll,
+    /// Each changed row removed from the order by a binary search on its old
+    /// value and inserted by one on its new value: two moves of the order's
+    /// tail per update.
+    BinarySearch,
+    /// The changed rows removed in one pass, then inserted, sorted, by binary
+    /// searches and block copies into a second buffer: one pass over the
+    /// order and O(changed · log rows) comparisons a frame. The table is
+    /// redrawn only when the rows on screen changed, as the grid does.
+    Merge,
+}
+
+impl OrderUpkeep {
+    fn label(self) -> &'static str {
+        match self {
+            Self::SortAll => "sort every frame",
+            Self::BinarySearch => "binary search per update",
+            Self::Merge => "one-pass merge, redrawn only when the shown rows change",
+        }
+    }
+}
+
+/// A careful `DataTable` delegate over the S2 data: rows by key, a sorted
+/// order of keys beside them, and every row's cells formatted once at setup
+/// (the S6b "fast" delegate, by key instead of by row index), so
+/// `render_td` only clones a `SharedString`.
+struct StormTable {
+    /// Rows by key: the keys are 0..ROWS, so a `Vec` is the fastest map.
+    rows: Vec<Quote>,
+    /// The display order: keys, by [`storm_order`].
+    order: Vec<u32>,
+    /// Every row's cells in display order, formatted at setup; `None` after
+    /// the row changed, until `render_td` formats it again. Few changed rows
+    /// are on screen, so formatting them lazily is cheaper than in the
+    /// update.
+    cells: Vec<Option<Box<[SharedString]>>>,
+    columns: Vec<Column>,
+    /// Schema columns in display order.
+    column_order: Vec<usize>,
+    upkeep: OrderUpkeep,
+    /// `Merge`: the changed keys of a batch, a flag by key, the buffer the
+    /// new order is built in, and the keys shown before the batch.
+    changed: Vec<u32>,
+    is_changed: Vec<bool>,
+    scratch: Vec<u32>,
+    shown_before: Vec<u32>,
+    /// Rows formatted in `render_td`.
+    misses: usize,
+}
+
+impl StormTable {
+    fn new(rows: Vec<Quote>, upkeep: OrderUpkeep) -> Self {
+        let column_order = display_order();
+        let cells = rows
+            .iter()
+            .map(|quote| Some(format_row(quote, &column_order)))
+            .collect();
+        let mut order: Vec<u32> = (0..rows.len() as u32).collect();
+        order.sort_by(|&a, &b| storm_order(&rows, a, b));
+        Self {
+            columns: table_columns(&column_order),
+            is_changed: vec![false; rows.len()],
+            rows,
+            order,
+            cells,
+            column_order,
+            upkeep,
+            changed: Vec::new(),
+            scratch: Vec::new(),
+            shown_before: Vec::new(),
+            misses: 0,
+        }
+    }
+
+    /// Applies one frame of updates and keeps the order sorted. Returns
+    /// whether the table needs a redraw: always, except for `Merge` when no
+    /// row in `shown` (display rows) changed or moved.
+    fn apply(&mut self, batch: Vec<Quote>, shown: std::ops::Range<usize>) -> bool {
+        let Self {
+            rows,
+            order,
+            cells,
+            changed,
+            is_changed,
+            scratch,
+            shown_before,
+            upkeep,
+            ..
+        } = self;
+        let shown = shown.start.min(order.len())..shown.end.min(order.len());
+        match upkeep {
+            OrderUpkeep::SortAll => {
+                for quote in batch {
+                    let key = quote.id as usize;
+                    rows[key] = quote;
+                    cells[key] = None;
+                }
+                order.sort_by(|&a, &b| storm_order(rows, a, b));
+                true
+            }
+            OrderUpkeep::BinarySearch => {
+                for quote in batch {
+                    let key = quote.id as u32;
+                    let at = order
+                        .binary_search_by(|&other| storm_order(rows, other, key))
+                        .expect("every key is in the order");
+                    order.remove(at);
+                    rows[key as usize] = quote;
+                    cells[key as usize] = None;
+                    let to = order.partition_point(|&other| storm_order(rows, other, key).is_lt());
+                    order.insert(to, key);
+                }
+                true
+            }
+            OrderUpkeep::Merge => {
+                shown_before.clear();
+                shown_before.extend_from_slice(&order[shown.clone()]);
+                for quote in batch {
+                    let key = quote.id as usize;
+                    rows[key] = quote;
+                    cells[key] = None;
+                    if !is_changed[key] {
+                        is_changed[key] = true;
+                        changed.push(key as u32);
+                    }
+                }
+                order.retain(|&key| !is_changed[key as usize]);
+                changed.sort_unstable_by(|&a, &b| storm_order(rows, a, b));
+                scratch.clear();
+                let mut from = 0;
+                for &key in changed.iter() {
+                    let to = from
+                        + order[from..]
+                            .partition_point(|&other| storm_order(rows, other, key).is_lt());
+                    scratch.extend_from_slice(&order[from..to]);
+                    scratch.push(key);
+                    from = to;
+                }
+                scratch.extend_from_slice(&order[from..]);
+                std::mem::swap(order, scratch);
+                let now_shown = &order[shown];
+                let redraw = now_shown != shown_before.as_slice()
+                    || now_shown.iter().any(|&key| is_changed[key as usize]);
+                for key in changed.drain(..) {
+                    is_changed[key as usize] = false;
+                }
+                redraw
+            }
+        }
+    }
+
+    fn is_sorted(&self) -> bool {
+        self.order
+            .is_sorted_by(|&a, &b| storm_order(&self.rows, a, b).is_le())
+    }
+}
+
+impl TableDelegate for StormTable {
+    fn columns_count(&self, _: &App) -> usize {
+        COLUMNS
+    }
+
+    fn rows_count(&self, _: &App) -> usize {
+        self.order.len()
+    }
+
+    fn column(&self, col_ix: usize, _: &App) -> Column {
+        self.columns[col_ix].clone()
+    }
+
+    fn render_td(
+        &mut self,
+        row_ix: usize,
+        col_ix: usize,
+        _: &mut Window,
+        _: &mut Context<TableState<Self>>,
+    ) -> impl IntoElement {
+        let key = self.order[row_ix] as usize;
+        let Self {
+            rows,
+            cells,
+            column_order,
+            misses,
+            ..
+        } = self;
+        let text = cells[key].get_or_insert_with(|| {
+            *misses += 1;
+            format_row(&rows[key], column_order)
+        })[col_ix]
+            .clone();
+        div().child(text)
+    }
+}
+
+/// S6c (`fling` false) and S6d (`fling` true): `DataTable` under the S2
+/// load, 166 updates a frame on random keys of 100k rows, shown sorted by
+/// "Price 1" descending, which the updates change; S6d also scrolls to a new
+/// page every frame, as S3. The delegate is [`StormTable`] with `upkeep`.
+/// Everything is on the UI thread: the update and the upkeep of the order
+/// (timed in the `update` that applies them), and the draw ([`frame_draw`]).
+/// Making the updates (the feed) is not timed, as in the grid's scenarios.
+/// A baseline, without a limit.
+fn scenario_datatable_storm(pools: &Pools, upkeep: OrderUpkeep, fling: bool) {
+    let mut rng = fastrand::Rng::with_seed(7);
+    let rows: Vec<Quote> = (0..ROWS).map(|id| pools.row(&mut rng, id)).collect();
+    let mut feed = rows.clone();
+    let (delegate, setup) = time(|| StormTable::new(rows, upkeep));
+    let (mut harness, table) = table_harness(delegate);
+    harness
+        .cx
+        .update(|cx| table.update(cx, |table, _| table.delegate_mut().misses = 0));
+    let load = load_average();
+    let (mut updates, mut draws, mut ui, mut main) = (
+        Vec::with_capacity(FRAMES),
+        Vec::with_capacity(FRAMES),
+        Vec::with_capacity(FRAMES),
+        Vec::with_capacity(FRAMES),
+    );
+    let mut extra_draws = 0;
+    for frame_ix in 0..FRAMES {
+        // The feed: the S2 updates, made off the measured time.
+        let ids: Vec<u64> = (0..S2_UPDATES).map(|_| rng.u64(..ROWS)).collect();
+        let batch: Vec<Quote> = ids
+            .into_iter()
+            .map(|id| {
+                let quote = &mut feed[id as usize];
+                mutate(&mut rng, quote);
+                quote.clone()
+            })
+            .collect();
+        let drawn = harness.samples.borrow().len();
+        let started = Instant::now();
+        // Test mode draws the dirty window at the end of this update.
+        harness.cx.update(|cx| {
+            table.update(cx, |table, cx| {
+                if fling {
+                    let page = table.visible_range().rows().len().max(1);
+                    table.scroll_to_row((frame_ix + 1) * page, cx);
+                }
+                let shown = table.visible_range().rows().clone();
+                let (redraw, elapsed) = time(|| table.delegate_mut().apply(batch, shown));
+                updates.push(elapsed);
+                if redraw {
+                    cx.notify();
+                }
+            })
+        });
+        harness.tick();
+        main.push(started.elapsed());
+        let draw = frame_draw(&harness.samples, drawn, &mut extra_draws);
+        draws.push(draw);
+        ui.push(draw + updates[frame_ix]);
+    }
+    let samples = harness.take();
+    let (sorted, misses, shown) = harness.cx.read_entity(&table, |table, _| {
+        let delegate = table.delegate();
+        (
+            delegate.is_sorted(),
+            delegate.misses,
+            table.visible_range().rows().start,
+        )
+    });
+    assert!(sorted, "the S6c order must stay sorted");
+    let name = if fling {
+        format!(
+            "S6d DataTable, S2 load + a new page every frame, {}",
+            upkeep.label()
+        )
+    } else {
+        format!("S6c DataTable, S2 load, {}", upkeep.label())
+    };
+    let drawn = drawn_frames(&ui, &draws);
+    let notes = format!(
+        "load {load}; UI thread per frame (update + order + draw) {}; {} frames drew, their UI thread {}; update + order {}; draw {}; main thread per frame, everything {}; {extra_draws} extra draws; fast delegate: cells formatted at setup ({:.0} ms), {misses} changed rows formatted again in render_td; {S2_UPDATES} updates a frame; first shown row {shown}",
+        spread(&ui),
+        drawn.len(),
+        spread(&drawn),
+        spread(&updates),
+        spread(&draws),
+        spread(&main),
+        ms(setup),
+    );
+    harness.report(&name, FRAMES, &samples, &notes);
+}
+
+/// S2c (`fling` false) and S3c (`fling` true): the S2 grid and load, timed
+/// per frame on the UI thread as S6c and S6d are: the draw ([`frame_draw`])
+/// and the pull of the store's snapshot. S3c also scrolls to a new page every
+/// frame, as S3. The rebuilds run on the test dispatcher between frames,
+/// as background jobs; a `TimedRunner` times them, and "main thread,
+/// everything less the rebuilds" bounds the UI thread from above: it also
+/// holds the ingest of the updates (a background task outside the test),
+/// installing a rebuilt order, and the test executor.
+fn scenario_storm_grid(pools: &Pools, fling: bool) {
+    let runner = TimedRunner::default();
+    let mut grid = GridHarness::configured(pools, {
+        let runner = runner.clone();
+        move |grid| {
+            grid.with_view(ViewSpec::new().with_sort([(Col(1), SortDirection::Descending)]))
+                .with_selection_mode(SelectionMode::RowSet)
+                .with_task_runner(runner)
+        }
+    });
+    runner.take();
+    let stats = |grid: &mut GridHarness| {
+        grid.harness
+            .cx
+            .read_entity(&grid.grid, |grid, _| grid.stats())
+    };
+    let load = load_average();
+    let (mut draws, mut pulls, mut ui, mut main, mut jobs) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let (mut multiple_pulls, mut extra_draws) = (0, 0);
+    let mut seen = stats(&mut grid);
+    for frame_ix in 0..FRAMES {
+        // The S2 load: ~10k updates/s at 60 fps on random keys.
+        let ids: Vec<u64> = (0..S2_UPDATES).map(|_| grid.rng.u64(..ROWS)).collect();
+        grid.write(ids);
+        let page = grid.visible_keys().len().max(1);
+        let drawn = grid.harness.samples.borrow().len();
+        let started = Instant::now();
+        if fling {
+            grid.update_grid(|grid, cx| grid.scroll_to_row((frame_ix + 1) * page, cx));
+        }
+        grid.harness.tick();
+        let elapsed = started.elapsed();
+        let frame_jobs = runner.take();
+        jobs.extend_from_slice(&frame_jobs);
+        main.push(elapsed.saturating_sub(frame_jobs.iter().sum()));
+        let draw = frame_draw(&grid.harness.samples, drawn, &mut extra_draws);
+        let now = stats(&mut grid);
+        let pull = match now.snapshots() - seen.snapshots() {
+            0 => Duration::ZERO,
+            // Only the last pull's time is kept: count each as long.
+            pulled => {
+                if pulled > 1 {
+                    multiple_pulls += 1;
+                }
+                pulls.push(now.last_pull());
+                now.last_pull() * pulled as u32
+            }
+        };
+        seen = now;
+        draws.push(draw);
+        ui.push(draw + pull);
+    }
+    let samples = grid.harness.take();
+    let name = if fling {
+        "S3c S2 + fling: a new page every frame"
+    } else {
+        "S2c S2 timed per frame on the UI thread"
+    };
+    let drawn = drawn_frames(&ui, &draws);
+    let notes = format!(
+        "load {load}; UI thread per frame (draw + snapshot pull) {}; {} frames drew, their UI thread {}; pull p50 {:.3} ms, p99 {:.3} ms, max {:.3} ms over {} pulls ({multiple_pulls} frames with more than one); draw {}; main thread per frame, everything less the rebuilds {}; {extra_draws} extra draws; rebuild jobs (background) {}, {}; {}",
+        spread(&ui),
+        drawn.len(),
+        spread(&drawn),
+        ms(percentile(&pulls, 0.5)),
+        ms(percentile(&pulls, 0.99)),
+        ms(percentile(&pulls, 1.0)),
+        pulls.len(),
+        spread(&draws),
+        spread(&main),
+        jobs.len(),
+        spread(&jobs),
+        grid.notes(),
+    );
+    grid.harness.report(name, FRAMES, &samples, &notes);
+}
+
+/// The grid and `DataTable` under the S2 load: S2c and S6c, then with a new
+/// page every frame, S3c and S6d.
+fn scenario_storm_tables(pools: &Pools) {
+    const UPKEEPS: [OrderUpkeep; 3] = [
+        OrderUpkeep::SortAll,
+        OrderUpkeep::BinarySearch,
+        OrderUpkeep::Merge,
+    ];
+    for fling in [false, true] {
+        scenario_storm_grid(pools, fling);
+        for upkeep in UPKEEPS {
+            scenario_datatable_storm(pools, upkeep, fling);
+        }
+    }
+}
+
+/// `SPIKE_STORM_ONLY`: S1, S2, S3, S6 and S6b to compare with, then
+/// [`scenario_storm_tables`].
+fn scenario_storm_comparison(pools: &Pools) {
+    scenario_visible_updates(pools, false);
+    scenario_random_p2(pools, false);
+    scenario_fling(pools, false);
+    scenario_datatable(pools, false);
+    scenario_datatable(pools, true);
+    scenario_storm_tables(pools);
 }
 
 // ---------------------------------------------------------------------------
@@ -6099,6 +6563,11 @@ fn main() {
         scenario_keyed_storm();
         return;
     }
+    if std::env::var_os("SPIKE_STORM_ONLY").is_some() {
+        header();
+        scenario_storm_comparison(&pools);
+        return;
+    }
     if std::env::var_os("SPIKE_DRAG_ONLY").is_some() {
         header();
         scenario_random_p2(&pools, false);
@@ -6165,6 +6634,8 @@ fn main() {
     scenario_fling(&pools, true);
     scenario_datatable(&pools, false);
     scenario_datatable(&pools, true);
+    // DataTable and the grid under the S2 load, with and without scrolling.
+    scenario_storm_tables(&pools);
     scenario_fade(&pools);
     // Groups on screen.
     let s16_p50 = scenario_grouped_p2(&pools, false);
