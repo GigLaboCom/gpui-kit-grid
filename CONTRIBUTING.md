@@ -239,7 +239,8 @@ The demos' recordings (the wiki's replay, the ships' and Helsinki's
 fallback) are not committed: the Site workflow downloads them from the
 release `site-recordings-1` and checks them against
 `script/site-recordings.sha256`. Without that release the site goes out
-without them, with a warning.
+without them, with a warning on every run; once the release is published,
+the next run builds the demos again, with them.
 
 ## Profile the performance
 

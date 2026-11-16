@@ -26,8 +26,9 @@
 # Helsinki demos replay, which are not committed: they come from the
 # release RECORDINGS_RELEASE of this repository, checked against
 # `script/site-recordings.sha256`. Without that release the site goes out
-# without the recordings (a warning): wiki has no Replay, and ships and
-# Helsinki stay live with no fallback. CelesTrak's elements are never
+# without the recordings (a warning on every run): wiki has no Replay, and
+# ships and Helsinki stay live with no fallback. Publishing the release
+# builds the demos again, with them. CelesTrak's elements are never
 # fetched here: the site's orbit page asks CelesTrak from the visitor's
 # browser, on a click.
 name: Site
@@ -95,6 +96,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: gpui-kit-grid
+      # Whether the recordings' release is there is part of the demos' cache
+      # key below: the demos built before the release was published carry no
+      # recording, and are not taken for the ones built after. Only "release
+      # not found" counts as none; any other failure stops the build.
+      - name: Look for the recordings
+        id: recordings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if error=$(gh release view "$RECORDINGS_RELEASE" --json tagName 2>&1 > /dev/null); then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "key=with-$RECORDINGS_RELEASE" >> "$GITHUB_OUTPUT"
+          elif grep --quiet --ignore-case 'release not found' <<< "$error"; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "key=without-recordings" >> "$GITHUB_OUTPUT"
+            echo "::warning title=No recordings::No release $RECORDINGS_RELEASE: the demos go without their recordings (no Replay in wiki, no fallback in ships and Helsinki)."
+          else
+            echo "::error title=Recordings::Cannot ask for the release $RECORDINGS_RELEASE: $error"
+            exit 1
+          fi
       # The demos (wasm modules, glue, the data and notices they serve) and
       # rustdoc depend only on the crates, the toolchain and the demos' data,
       # not on the site: a change to site/ alone takes them from this cache
@@ -110,7 +132,7 @@ jobs:
             gpui-kit-grid/crates/grid-web/www/licenses
             gpui-kit-grid/crates/grid-web/www/fonts
             gpui-kit-grid/target/doc
-          key: site-demos-${{ env.RECORDINGS_RELEASE }}-${{ env.BINARYEN_VERSION }}-${{ hashFiles('gpui-kit-grid/crates/**', 'gpui-kit-grid/Cargo.lock', 'gpui-kit-grid/Cargo.toml', 'gpui-kit-grid/rust-toolchain.toml', 'gpui-kit-grid/script/fetch-example-fonts', 'gpui-kit-grid/script/fetch-transit-data', 'gpui-kit-grid/script/site-recordings.sha256') }}
+          key: site-demos-${{ steps.recordings.outputs.key }}-${{ env.BINARYEN_VERSION }}-${{ hashFiles('gpui-kit-grid/crates/**', 'gpui-kit-grid/Cargo.lock', 'gpui-kit-grid/Cargo.toml', 'gpui-kit-grid/rust-toolchain.toml', 'gpui-kit-grid/script/fetch-example-fonts', 'gpui-kit-grid/script/fetch-transit-data', 'gpui-kit-grid/script/site-recordings.sha256') }}
       - name: The pinned gpui-kit revision
         if: steps.demos.outputs.cache-hit != 'true'
         id: gpui-kit
@@ -199,19 +221,15 @@ jobs:
           rm -f crates/grid/examples/data/*.zip
 
       - name: Fetch the recordings
-        if: steps.demos.outputs.cache-hit != 'true'
+        if: steps.demos.outputs.cache-hit != 'true' && steps.recordings.outputs.found == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           data=crates/grid/examples/data
-          if gh release view "$RECORDINGS_RELEASE" > /dev/null 2>&1; then
-            gh release download "$RECORDINGS_RELEASE" --dir "$data" --clobber \
-              --pattern ais-recording.txt --pattern hsl-recording.txt.gz --pattern wiki-recording.jsonl
-            (cd "$data" && sha256sum --check --strict "$GITHUB_WORKSPACE/gpui-kit-grid/script/site-recordings.sha256")
-          else
-            echo "::warning::No release $RECORDINGS_RELEASE: the demos go without their recordings (no Replay in wiki, no fallback in ships and Helsinki)."
-          fi
+          gh release download "$RECORDINGS_RELEASE" --dir "$data" --clobber \
+            --pattern ais-recording.txt --pattern hsl-recording.txt.gz --pattern wiki-recording.jsonl
+          (cd "$data" && sha256sum --check --strict "$GITHUB_WORKSPACE/gpui-kit-grid/script/site-recordings.sha256")
 
       # Every example's module, glue and notices, with only the data the
       # site may serve (`SITE=1`; RUSTC_BOOTSTRAP is set by the script).
@@ -249,6 +267,11 @@ jobs:
       # under `api/`, checked against the size limits (25 MiB a file).
       - name: Assemble dist
         run: node crates/grid-web/scripts/site-dist.mjs site/dist --api=target/doc
+      # With the release there, dist carries the recordings as the release
+      # has them, from a fresh build or from the cache.
+      - name: Check the recordings in dist
+        if: steps.recordings.outputs.found == 'true'
+        run: (cd site/dist/demo/data && sha256sum --check --strict "$GITHUB_WORKSPACE/gpui-kit-grid/script/site-recordings.sha256")
 
       # The snippets against their regions, and every internal link of dist.
       - name: Test the site
