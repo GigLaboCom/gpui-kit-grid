@@ -63,7 +63,7 @@ around the snippet decides.
 | Where | Copy |
 | --- | --- |
 | Your own page, a Ghost HTML card, a self-hosted WordPress Custom HTML block | works |
-| JSFiddle editor, CodePen Full Page view, StackBlitz (`html` and `node` previews), LiveCodes | works |
+| JSFiddle editor, CodePen Full Page view, StackBlitz (static and `node` previews), LiveCodes | works |
 | CodePen editor, MDN Playground, CodeSandbox embeds, JS Bin | shows the notice |
 | dev.to, Medium, Hashnode and Discourse posts (through a pen, fiddle or project embed) | shows the notice |
 
