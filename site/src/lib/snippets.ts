@@ -63,7 +63,12 @@ export function jsFiddle(html: string, about: About = PLAY): Prefill {
   };
 }
 
-/** StackBlitz's POST API with its static `html` template. */
+/**
+ * StackBlitz's POST API with the template of its "Static" starter,
+ * `polymer`: the files are served as they are. Its `html` template bundles
+ * the page instead: it answers `style.css` with HTML and runs the element's
+ * module script as a classic one, so the preview stays blank.
+ */
 export function stackBlitz(html: string, about: About = PLAY): Prefill {
   const page =
     '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8" />\n' +
@@ -75,7 +80,7 @@ export function stackBlitz(html: string, about: About = PLAY): Prefill {
     fields: {
       'project[title]': about.title,
       'project[description]': about.description,
-      'project[template]': 'html',
+      'project[template]': 'polymer',
       'project[files][index.html]': page,
       'project[files][style.css]': CSS,
     },
