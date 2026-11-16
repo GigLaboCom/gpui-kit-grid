@@ -2,8 +2,9 @@
 #
 # Starts the site image read-only and checks that it serves the site the way
 # it must: pages, the trailing-slash redirect, the 404 page, the
-# embedding headers and cache rules of _headers, wasm and compression, and an
-# unprivileged nginx. Paths to try come from the dist the image was built from.
+# embedding headers and cache rules of _headers, wasm and compression, the
+# demos' data with its licence notes, and an unprivileged nginx. Paths to
+# try come from the dist the image was built from.
 #
 #   docker/site/smoke.sh <image> [<dist dir>]     # default: site/dist
 #
@@ -49,6 +50,16 @@ header() {
   shift 2
   curl -s -o /dev/null -D - "$@" "$base$path" | tr -d '\r' |
     awk -v n="$(printf '%s' "$field" | tr 'A-Z' 'a-z')" -F': ' 'tolower($1) == n { sub(/^[^:]*: /, ""); print; exit }'
+}
+# headers <path> [curl options]: the status line and the headers, and
+# field <headers> <name>: one header's value out of them, empty without it.
+headers() {
+  local path="$1"
+  shift
+  curl -s -o /dev/null -D - "$@" "$base$path" | tr -d '\r'
+}
+field() {
+  awk -v n="$(printf '%s' "$2" | tr 'A-Z' 'a-z')" -F': ' 'tolower($1) == n { sub(/^[^:]*: /, ""); print; exit }' <<<"$1"
 }
 expect() {
   local what="$1" got="$2" want="$3"
@@ -102,6 +113,27 @@ if [[ -n "$wasm" ]]; then
   expect "/$wasm cache" "$(header "/$wasm" Cache-Control)" "no-cache"
 else
   echo "  skip  no wasm in $dist (a site without the demos)"
+fi
+
+# The demos' data, when the site carries it (the timetables, and the
+# recordings when their release is there): read from any origin through the
+# element and asked for again each time, as the modules are; a text file goes
+# out compressed and an archive as it is; each has a licence note to read.
+data="$(cd "$dist" && find demo/data -type f ! -name '*.license' 2>/dev/null | sort)"
+if [[ -n "$data" ]]; then
+  for file in $data; do
+    got="$(headers "/$file" -H 'Accept-Encoding: gzip')"
+    expect "/$file status" "$(awk 'NR == 1 { print $2 }' <<<"$got")" 200
+    expect "/$file CORS" "$(field "$got" Access-Control-Allow-Origin)" "[*]"
+    expect "/$file cache" "$(field "$got" Cache-Control)" "no-cache"
+    case "$file" in
+      *.gz) expect "/$file encoding" "$(field "$got" Content-Encoding)" "" ;;
+      *) expect "/$file gzip" "$(field "$got" Content-Encoding)" "gzip" ;;
+    esac
+    expect "/$file.license type" "$(header "/$file.license" Content-Type)" "text/plain*"
+  done
+else
+  echo "  skip  no demo/data in $dist (a site without the demos' data)"
 fi
 
 # No root, and a filesystem nobody writes to.
