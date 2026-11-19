@@ -1,7 +1,7 @@
 [package]
 name = "gpui-kit-grid"
 description = "A live data grid for GPUI applications built with gpui-kit: real-time rows by key from any thread, change highlight, and sorting, filtering, grouping and trees in the background."
-version = "1.0.0"
+version = "2.0.0"
 keywords = ["gpui", "datagrid", "data-grid", "table", "real-time"]
 categories = ["gui", "visualization", "wasm"]
 edition.workspace = true
