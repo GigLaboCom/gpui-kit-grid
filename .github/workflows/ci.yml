@@ -100,6 +100,9 @@ jobs:
         run: |
           cargo fmt --all --check
           cd crates/grid-web && cargo fmt --all --check
+      # The files and the versions of the two crates crates.io gets.
+      - name: What crates.io gets
+        run: bun script/check-package.ts
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-machete@0.9.1
@@ -152,6 +155,11 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --no-deps --features gpui-kit-grid/decimal,gpui-kit-grid/derive --locked
+      # The two crates built from their packages, as `cargo publish` would
+      # upload them: a file the build needs and `include` leaves out fails
+      # here, not on a release tag.
+      - name: Package for crates.io
+        run: cargo publish --dry-run --locked -p gpui-kit-grid-macros -p gpui-kit-grid
 
   wasm:
     name: Web
@@ -260,9 +268,10 @@ jobs:
   # A crate tag `vX.Y.Z`, once every job above passed on it: the release of
   # the library (CONTRIBUTING.md, "Releases"). The tag must name the
   # crates' version, and the install snippets on the site the tag; the
-  # history carries no secret; the GitHub release opens with what to put in
+  # history carries no secret; `gpui-kit-grid-macros` and `gpui-kit-grid`
+  # go to crates.io; the GitHub release opens with what to put in
   # Cargo.toml and the changes since the previous `vX.Y.Z`, and is the
-  # repository's latest (site releases never are). Not on crates.io yet.
+  # repository's latest (site releases never are).
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
@@ -270,6 +279,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # crates.io's Trusted Publishing: a token for this job only.
+      id-token: write
     env:
       # The scanner the git hooks run, checked against its release's sums.
       GITLEAKS_VERSION: 8.30.1
@@ -310,6 +321,66 @@ jobs:
             tar --extract --gzip --file "$archive" gitleaks
           )
           "$RUNNER_TEMP/gitleaks" git --no-banner --redact --config .gitleaks.toml .
+
+      # crates.io through Trusted Publishing: no token in the secrets; the
+      # publisher set on each crate names this repository and `ci.yml`. A
+      # version crates.io has is skipped: a crate's first version goes up by
+      # hand before its tag (crates.io takes a Trusted Publisher only for a
+      # crate it has), and a rerun publishes nothing twice.
+      - name: The versions crates.io lacks
+        id: crates
+        run: |
+          agent="$GITHUB_REPOSITORY release (https://github.com/$GITHUB_REPOSITORY)"
+          status() {
+            curl --silent --output /dev/null --write-out '%{http_code}' --user-agent "$agent" "$1"
+          }
+          version="${TAG#v}"
+          missing=""
+          for crate in gpui-kit-grid-macros gpui-kit-grid; do
+            case "$(status "https://crates.io/api/v1/crates/$crate/$version")" in
+              200) echo "$crate $version is on crates.io" ;;
+              404) missing="$missing $crate" ;;
+              *) echo "::error::crates.io did not say whether it has $crate $version"; exit 1 ;;
+            esac
+          done
+          echo "missing=${missing# }" >> "$GITHUB_OUTPUT"
+          # A grid on crates.io before this version: the baseline of the API check.
+          semver=false
+          if [[ " $missing " == *" gpui-kit-grid "* ]] &&
+            [ "$(status "https://crates.io/api/v1/crates/gpui-kit-grid")" = 200 ]; then
+            semver=true
+          fi
+          echo "semver=$semver" >> "$GITHUB_OUTPUT"
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        if: steps.crates.outputs.missing != ''
+        with:
+          cache: false
+      - name: Install system dependencies
+        if: steps.crates.outputs.semver == 'true'
+        run: script/bootstrap
+      - uses: taiki-e/install-action@v2
+        if: steps.crates.outputs.semver == 'true'
+        with:
+          tool: cargo-semver-checks@0.51.0
+      # From the second release on: the grid's API against its last version
+      # on crates.io, so a breaking change cannot ship under a minor version.
+      - name: The API against the last release
+        if: steps.crates.outputs.semver == 'true'
+        run: cargo semver-checks --package gpui-kit-grid --only-explicit-features --features decimal --features derive
+      - uses: rust-lang/crates-io-auth-action@v1
+        if: steps.crates.outputs.missing != ''
+        id: auth
+      # Without a second build: the pull requests and `main` build these
+      # packages (`cargo publish --dry-run`, Docs job).
+      - name: Publish on crates.io
+        if: steps.crates.outputs.missing != ''
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          MISSING: ${{ steps.crates.outputs.missing }}
+        run: |
+          packages=()
+          for crate in $MISSING; do packages+=(-p "$crate"); done
+          cargo publish --locked --no-verify "${packages[@]}"
 
       - name: Cut the GitHub release
         env:
