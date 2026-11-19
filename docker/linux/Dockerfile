@@ -5,7 +5,7 @@
 # The lines up to `WORKDIR /src` are a generic GPUI build image. Keep them
 # unchanged, so Docker reuses their layers for other GPUI projects built
 # from the same lines; everything specific to this repository comes after.
-FROM rust:1.95-bookworm
+FROM rust:1.98-bookworm
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       pkg-config clang libclang-dev cmake ninja-build python3 curl ca-certificates git \
@@ -20,8 +20,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     && rm -rf /var/lib/apt/lists/*
 
 # The version of rust-toolchain.toml.
-RUN rustup toolchain install 1.95.0 --profile minimal && rustup default 1.95.0
-RUN rustup component add --toolchain 1.95.0 clippy
+RUN rustup toolchain install 1.98.0 --profile minimal && rustup default 1.98.0
+RUN rustup component add --toolchain 1.98.0 clippy
 
 ENV CARGO_TARGET_DIR=/target \
     LIBGL_ALWAYS_SOFTWARE=1
@@ -29,7 +29,7 @@ WORKDIR /src
 
 # gpui-kit-grid only from here on.
 # rustfmt: rust-toolchain.toml lists it, so rustup would fetch it on first use.
-RUN rustup component add --toolchain 1.95.0 rustfmt
+RUN rustup component add --toolchain 1.98.0 rustfmt
 # xclip reads the X clipboard for the copy scenario (script/e2e).
 # mold replaces the system `ld`, as `rui314/setup-mold` does in CI: GNU ld
 # linking a dozen test binaries at once runs the Docker VM out of memory

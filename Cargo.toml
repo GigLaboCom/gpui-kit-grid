@@ -13,7 +13,7 @@ resolver = "2"
 publish = false
 edition = "2024"
 # The `rust-toolchain.toml` channel.
-rust-version = "1.95"
+rust-version = "1.98"
 license = "Apache-2.0"
 repository = "https://github.com/GigLaboCom/gpui-kit-grid"
 homepage = "https://gkg.giglabo.com"
@@ -26,9 +26,11 @@ readme = "README.md"
 # `gpui-pre-sum-tree`); then it must use the same exact `=x.y.z` version.
 # `script/check-gpui-kit-pin.ts` enforces both rules.
 #
-# Pinned to a gpui-kit revision on branch `next`. To build against a local
-# gpui-kit checkout instead, see CONTRIBUTING.md, "A local gpui-kit checkout".
-gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "146ab45ac0d0cc9dad5f5fd05ecd38da9b3db6e7" }
+# gpui-kit from crates.io, on one minor release: each minor release pins a
+# new GPUI snapshot, and `Cargo.lock` holds the exact release. To build
+# against a local gpui-kit checkout instead, see CONTRIBUTING.md, "A local
+# gpui-kit checkout".
+gpui-kit = "0.10"
 gpui-kit-grid = { path = "crates/grid" }
 gpui-kit-grid-feed = { path = "crates/grid-feed" }
 gpui-kit-grid-macros = { path = "crates/grid-macros" }

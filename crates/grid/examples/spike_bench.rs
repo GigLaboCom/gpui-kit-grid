@@ -5600,9 +5600,10 @@ fn scenario_column_chooser() {
     // Typing "Column 12" into the search field, which has the focus: each
     // keystroke (the input, the panel filtering its rows), then its frame.
     let (mut keystrokes, mut typing) = (Vec::new(), Vec::new());
+    let os = cx.update(|cx| cx.platform_info().os);
     for character in "Column 12".chars() {
         let text = character.to_string();
-        let mut key = gpui_kit::Keystroke::parse(&text).expect("a valid keystroke");
+        let mut key = gpui_kit::Keystroke::parse_with_os(&text, os).expect("a valid keystroke");
         key.key_char = Some(text);
         let ((), handled) = time(|| {
             cx.update_window(window, |_, window, cx| {

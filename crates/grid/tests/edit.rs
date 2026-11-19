@@ -14,8 +14,8 @@ use chrono::{DateTime, Utc};
 use gpui_kit::component::{Sizable as _, checkbox::Checkbox};
 use gpui_kit::{
     AnyElement, App, AppContext as _, Focusable as _, InputEvent as _, IntoElement as _, Modifiers,
-    MouseButton, Role, ScrollDelta, ScrollWheelEvent, TestAppContext, TouchPhase, Window, point,
-    px, test::TestWindowExt as _,
+    MouseButton, Role, ScrollDelta, ScrollEvent, ScrollSource, TestAppContext, TouchPhase, Window,
+    point, px, test::TestWindowExt as _,
 };
 use gpui_kit_grid::{
     AfterCommit, CellContent, CellEditHandle, CellElementContext, CellMove, CellValue,
@@ -604,11 +604,12 @@ fn test_editor_host(cx: &mut TestAppContext) {
     // Scrolled away by the wheel: the field keeps the focus, and typing
     // brings its cell back.
     cx.update_window(fixture.window, |_, window, cx| {
-        let wheel = ScrollWheelEvent {
+        let wheel = ScrollEvent {
             position: order_cell(5, OrderColumn::Id),
             delta: ScrollDelta::Pixels(point(px(0.), px(-ROW * 20.))),
             modifiers: Modifiers::default(),
             touch_phase: TouchPhase::Moved,
+            source: ScrollSource::Pointer,
         };
         window.dispatch_event(wheel.to_platform_input(), cx);
     })

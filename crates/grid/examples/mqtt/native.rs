@@ -315,8 +315,6 @@ pub fn dechunk(mut body: &[u8]) -> Result<Vec<u8>, String> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write as _;
-
     use super::*;
 
     #[test]

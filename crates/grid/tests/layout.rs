@@ -415,13 +415,13 @@ fn test_with_layout_ignores_builder_order(cx: &mut TestAppContext) {
     fn saved() -> GridLayout {
         GridLayout::new()
             .with_view_id("trades")
-            .with_column(LayoutColumn::new("total", 60.).with_zone(ColumnZone::FrozenLeft))
-            .with_column(LayoutColumn::new("id", 60.).with_zone(ColumnZone::FrozenLeft))
-            .with_column(LayoutColumn::new("bid", 70.))
-            .with_column(LayoutColumn::new("symbol", 140.))
-            .with_column(LayoutColumn::new("ask", 70.))
-            .with_column(LayoutColumn::new("size", 70.))
-            .with_column(LayoutColumn::new("note", 100.).with_visible(false))
+            .with_column(LayoutColumn::new("total", 60_f32).with_zone(ColumnZone::FrozenLeft))
+            .with_column(LayoutColumn::new("id", 60_f32).with_zone(ColumnZone::FrozenLeft))
+            .with_column(LayoutColumn::new("bid", 70_f32))
+            .with_column(LayoutColumn::new("symbol", 140_f32))
+            .with_column(LayoutColumn::new("ask", 70_f32))
+            .with_column(LayoutColumn::new("size", 70_f32))
+            .with_column(LayoutColumn::new("note", 100_f32).with_visible(false))
             .with_sort([gpui_kit_grid::LayoutSort::new("bid", Descending)])
     }
     fn view() -> ViewSpec<Quote> {
@@ -545,13 +545,13 @@ fn test_set_layout_events_and_report(cx: &mut TestAppContext) {
     // Ask hidden, Symbol after the band; Note missing. A sort key on an
     // unknown column.
     let saved = GridLayout::new()
-        .with_column(LayoutColumn::new("total", 90.).with_zone(ColumnZone::FrozenLeft))
-        .with_column(LayoutColumn::new("gone", 50.))
-        .with_column(LayoutColumn::new("id", 60.).with_zone(ColumnZone::FrozenLeft))
-        .with_column(LayoutColumn::new("bid", 75.))
-        .with_column(LayoutColumn::new("ask", 70.).with_visible(false))
-        .with_column(LayoutColumn::new("symbol", 80.))
-        .with_column(LayoutColumn::new("size", 70.))
+        .with_column(LayoutColumn::new("total", 90_f32).with_zone(ColumnZone::FrozenLeft))
+        .with_column(LayoutColumn::new("gone", 50_f32))
+        .with_column(LayoutColumn::new("id", 60_f32).with_zone(ColumnZone::FrozenLeft))
+        .with_column(LayoutColumn::new("bid", 75_f32))
+        .with_column(LayoutColumn::new("ask", 70_f32).with_visible(false))
+        .with_column(LayoutColumn::new("symbol", 80_f32))
+        .with_column(LayoutColumn::new("size", 70_f32))
         .with_sort([
             gpui_kit_grid::LayoutSort::new("gone", Ascending),
             gpui_kit_grid::LayoutSort::new("bid", Descending),
@@ -827,7 +827,7 @@ fn test_view_id_mismatch_is_refused(cx: &mut TestAppContext) {
     assert_eq!(before.view_id(), Some("trades"));
     fixture.take_events();
 
-    let wide = |layout: GridLayout| layout.with_column(LayoutColumn::new("symbol", 200.));
+    let wide = |layout: GridLayout| layout.with_column(LayoutColumn::new("symbol", 200_f32));
     let orders = wide(GridLayout::new().with_view_id("orders"));
     assert_eq!(
         fixture.set_layout(cx, &orders),
@@ -945,13 +945,13 @@ fn test_reset_layout_action(cx: &mut TestAppContext) {
 fn test_layout_of_grid_not_in_window(cx: &mut TestAppContext) {
     let (grid, events) = new_grid(cx, 30, |grid| grid);
     let saved = GridLayout::new()
-        .with_column(LayoutColumn::new("total", 60.).with_zone(ColumnZone::FrozenLeft))
-        .with_column(LayoutColumn::new("id", 60.).with_zone(ColumnZone::FrozenLeft))
-        .with_column(LayoutColumn::new("symbol", 140.))
-        .with_column(LayoutColumn::new("bid", 70.))
-        .with_column(LayoutColumn::new("ask", 70.).with_visible(false))
-        .with_column(LayoutColumn::new("size", 70.))
-        .with_column(LayoutColumn::new("note", 100.))
+        .with_column(LayoutColumn::new("total", 60_f32).with_zone(ColumnZone::FrozenLeft))
+        .with_column(LayoutColumn::new("id", 60_f32).with_zone(ColumnZone::FrozenLeft))
+        .with_column(LayoutColumn::new("symbol", 140_f32))
+        .with_column(LayoutColumn::new("bid", 70_f32))
+        .with_column(LayoutColumn::new("ask", 70_f32).with_visible(false))
+        .with_column(LayoutColumn::new("size", 70_f32))
+        .with_column(LayoutColumn::new("note", 100_f32))
         .with_sort([gpui_kit_grid::LayoutSort::new("bid", Descending)]);
     // Never painted: the API works on state alone and the events come.
     let report = grid
@@ -1120,12 +1120,12 @@ fn by_desk() -> GroupBy<GroupedRow> {
 /// The columns of `grouped_schema` as a layout saves them.
 fn trade_columns() -> GridLayout {
     [
-        ("id", 50.),
-        ("instrument", 80.),
-        ("side", 60.),
-        ("qty", 70.),
-        ("price", 80.),
-        ("trader", 70.),
+        ("id", 50_f32),
+        ("instrument", 80_f32),
+        ("side", 60_f32),
+        ("qty", 70_f32),
+        ("price", 80_f32),
+        ("trader", 70_f32),
     ]
     .into_iter()
     .map(|(id, width)| LayoutColumn::new(id, width))
@@ -1248,7 +1248,7 @@ fn test_set_layout_restores_grouping(cx: &mut TestAppContext) {
         .columns()
         .iter()
         .map(|column| match column.id().as_str() {
-            "trader" => column.clone().with_width(90.),
+            "trader" => column.clone().with_width(90_f32),
             _ => column.clone(),
         })
         .fold(GridLayout::new(), GridLayout::with_column)
@@ -1339,12 +1339,12 @@ fn test_set_layout_under_another_schema(cx: &mut TestAppContext) {
     // level is dropped and the paths deeper than the instrument level with
     // it; the empty path too.
     let saved = [
-        ("id", 50.),
-        ("venue", 70.),
-        ("instrument", 80.),
-        ("side", 60.),
-        ("qty", 70.),
-        ("price", 80.),
+        ("id", 50_f32),
+        ("venue", 70_f32),
+        ("instrument", 80_f32),
+        ("side", 60_f32),
+        ("qty", 70_f32),
+        ("price", 80_f32),
     ]
     .into_iter()
     .map(|(id, width)| LayoutColumn::new(id, width))

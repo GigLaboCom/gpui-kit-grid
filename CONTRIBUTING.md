@@ -19,10 +19,12 @@ applications only through a gpui-kit release (see gpui-kit `CONTRIBUTING.md`,
 
 So this repository:
 
-- depends on `gpui-kit` through an exact requirement (git `rev` or `=x.y.z`);
+- depends on `gpui-kit` from crates.io on one minor release (`0.10`; each
+  minor release pins a new snapshot, and `Cargo.lock` holds the exact
+  release), or on a git `rev` to try an unreleased change;
 - does not list `gpui-pre*` crates, except crates gpui-kit does not re-export,
   and then on the exact same snapshot version;
-- moves to a new gpui-kit revision in a dedicated pull request that adapts the
+- moves to a new gpui-kit release in a dedicated pull request that adapts the
   grid to any API change in the same pull request.
 
 CI rejects anything else (`bun script/check-gpui-kit-pin.ts`).
@@ -31,33 +33,35 @@ Changes that belong in gpui-kit or GPUI are contributed there, not patched here.
 
 ### A local gpui-kit checkout
 
-`Cargo.toml` pins gpui-kit to a git revision, so the first build needs network
-access to GitHub; after that cargo builds from its git cache, offline too. To
+`Cargo.toml` takes gpui-kit from crates.io, so the first build needs network
+access; after that cargo builds from its registry cache, offline too. To
 build against a local gpui-kit checkout instead (with no network at all, or to
 try a gpui-kit change), clone gpui-kit next to this repository and create
 `.cargo/config.local.toml`:
 
 ```toml
-[patch."https://github.com/longbridge/gpui-kit"]
+[patch.crates-io]
 gpui-kit = { path = "../gpui-kit/crates/kit" }
 ```
 
 The tracked `.cargo/config.toml` includes that file when it exists, and
 `.gitignore` keeps it out of commits. The path is relative to the repository
-root, and the patch covers `crates/grid-web` too. Check out the pinned revision
-(`git -C ../gpui-kit checkout <rev>`, the `rev` in `Cargo.toml`) to build what
-CI builds.
+root, and the patch covers `crates/grid-web` too. The checkout's version must
+match the requirement in `Cargo.toml` (cargo ignores the patch otherwise);
+check out the tag of the release `Cargo.lock` holds (`git -C ../gpui-kit
+checkout v0.10.0`) to build what CI builds.
 
 While the patch is active, cargo records gpui-kit's crates in `Cargo.lock` and
 `crates/grid-web/Cargo.lock` as path packages (their `source` lines go away), so
 `--locked` fails and the pin check warns. Never commit those lines: CI builds
-the pinned revision with `--locked` and rejects them. Before a commit, drop them
+the released crates with `--locked` and rejects them. Before a commit, drop them
 with `git checkout -p Cargo.lock crates/grid-web/Cargo.lock`, or move the file
 aside and run `cargo metadata --format-version 1 > /dev/null` to rewrite the
-entries from the pinned revision.
+entries from crates.io.
 
 The web build (`crates/grid-web`) also reads a few gpui-kit icons from
-`../gpui-kit`, so it needs that checkout, at the pinned revision, either way.
+`../gpui-kit`, so it needs that checkout, at the tag of the release
+`Cargo.lock` holds, either way.
 
 ## AI-Assisted Contributions
 

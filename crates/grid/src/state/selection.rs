@@ -1612,6 +1612,7 @@ impl<D: LiveGridDelegate> LiveGridState<D> {
             .opens_menu(&ContextMenuGestureContext::new(
                 button,
                 modifiers,
+                self.platform,
                 click_count,
                 area,
             ))
@@ -1929,6 +1930,7 @@ impl<D: LiveGridDelegate> LiveGridState<D> {
         let context = SelectionGestureContext::new(
             GestureInput::Keyboard,
             Modifiers::default(),
+            self.platform,
             extending,
             self.selection.is_selected(&target),
             self.selection.mode(),
@@ -2317,6 +2319,7 @@ impl<D: LiveGridDelegate> LiveGridState<D> {
         let context = SelectionGestureContext::new(
             GestureInput::Pointer,
             modifiers,
+            self.platform,
             false,
             selected,
             self.selection.mode(),
@@ -2379,6 +2382,7 @@ impl<D: LiveGridDelegate> LiveGridState<D> {
         let context = SelectionGestureContext::new(
             GestureInput::ContextPointer,
             modifiers,
+            self.platform,
             false,
             self.selection.is_selected(&target),
             self.selection.mode(),
@@ -3215,6 +3219,11 @@ mod tests {
     #[test]
     fn test_selection_matches_reference_model() {
         const PAGE: usize = 3;
+        // The pointer holds Cmd and Ctrl together, so the host does not matter.
+        const PLATFORM: gpui_kit::PlatformInfo = gpui_kit::PlatformInfo {
+            os: gpui_kit::OperatingSystem::Linux,
+            target: gpui_kit::PlatformTarget::Native,
+        };
         let columns = Visible(vec![ColumnIx::new(0)]);
         let gesture = StandardSelectionGesture;
         for seed in 0..60 {
@@ -3360,6 +3369,7 @@ mod tests {
                         let edit = gesture.edit(&SelectionGestureContext::new(
                             GestureInput::Pointer,
                             modifiers,
+                            PLATFORM,
                             false,
                             model.is_selected(&target),
                             mode,
@@ -3388,6 +3398,7 @@ mod tests {
                             let edit = gesture.edit(&SelectionGestureContext::new(
                                 GestureInput::Keyboard,
                                 Modifiers::default(),
+                                PLATFORM,
                                 extending,
                                 model.is_selected(&target),
                                 mode,

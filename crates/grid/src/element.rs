@@ -31,7 +31,7 @@ use gpui_kit::{
     ElementId, Entity, GlobalElementId, Hitbox, HitboxBehavior, Hsla, InspectorElementId,
     InteractiveElement as _, IntoElement, LayoutId, LineLayout, MouseButton, MouseDownEvent,
     MouseMoveEvent, MouseUpEvent, ParentElement as _, Pixels, Point, RenderImage, Role,
-    ScrollWheelEvent, SharedString, Stateful, StatefulInteractiveElement as _, Style, Styled as _,
+    ScrollEvent, SharedString, Stateful, StatefulInteractiveElement as _, Style, Styled as _,
     TransformationMatrix, Window, div, fill, prelude::FluentBuilder as _, px, relative,
 };
 
@@ -759,7 +759,7 @@ impl<D: LiveGridDelegate> Element for GridBody<D> {
         window.on_mouse_event({
             let hitbox = hitbox.clone();
             let state = state.clone();
-            move |event: &ScrollWheelEvent, phase, window, cx| {
+            move |event: &ScrollEvent, phase, window, cx| {
                 if phase == DispatchPhase::Bubble && hitbox.should_handle_scroll(window) {
                     state.update(cx, |state, cx| state.on_scroll_wheel(event.delta, cx));
                     cx.stop_propagation();

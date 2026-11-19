@@ -1177,7 +1177,15 @@ fn main() {
             gpui_kit::init(cx);
             gpui_kit_grid::init(cx);
             cx.bind_keys([
-                KeyBinding::new("secondary-n", NewOrder, Some(KEY_CONTEXT)),
+                KeyBinding::new(
+                    if cx.platform_info().is_mac() {
+                        "cmd-n"
+                    } else {
+                        "ctrl-n"
+                    },
+                    NewOrder,
+                    Some(KEY_CONTEXT),
+                ),
                 KeyBinding::new("delete", RemoveFromBasket, Some(BASKET_CONTEXT)),
                 KeyBinding::new("backspace", RemoveFromBasket, Some(BASKET_CONTEXT)),
             ]);
@@ -1216,7 +1224,12 @@ fn run_snapshot(mut settings: Settings, dir: &std::path::Path) {
         dir,
         size(px(1500.), px(800.)),
         |cx| {
-            cx.bind_keys([KeyBinding::new("secondary-n", NewOrder, Some(KEY_CONTEXT))]);
+            let new_order = if cx.platform_info().is_mac() {
+                "cmd-n"
+            } else {
+                "ctrl-n"
+            };
+            cx.bind_keys([KeyBinding::new(new_order, NewOrder, Some(KEY_CONTEXT))]);
         },
         |window, cx| cx.new(|cx| Root::new(settings, window, cx)),
     ) else {

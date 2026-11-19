@@ -224,8 +224,10 @@ class LiveGrid extends HTMLElement {
     return reply;
   }
 
-  /// GPUI's canvas, appended to the body while this element starts.
+  /// GPUI's canvas, appended to the body while this element starts; a
+  /// later one replaces the one before, which GPUI has dropped.
   adopt(canvas) {
+    this.#canvas?.remove();
     this.#canvas = canvas;
     this.#stage.append(canvas);
   }
@@ -263,22 +265,26 @@ class LiveGrid extends HTMLElement {
     for (const face of await Promise.all(first.map(fetchFace))) glue.add_font(face);
     if (setup) await (await setup).beforeRun(glue);
     holdFocus();
+    // The element takes every canvas GPUI appends until the window opens:
+    // without a WebGPU adapter GPUI drops the canvas it tried WebGPU on and
+    // appends another for WebGL 2. Inline elements start one at a time, so
+    // no other element is mounting meanwhile.
     mounting = this;
     try {
       glue.run(query);
       for (const started = performance.now(); !this.#canvas; await nextFrame()) {
         if (performance.now() - started > 10000) throw new Error('no canvas after 10 s');
       }
+      addGuest({ root: this.#stage, events: this.shadowRoot, canvas: () => this.#canvas, wasm: glue });
+      // GPUI sets the pointer's shape on the body: leaving the element gives
+      // the page its own back.
+      this.addEventListener('pointerleave', () => document.body.style.removeProperty('cursor'));
+      // The window opens once the canvas has its size.
+      for (const started = performance.now(); glue.stats() === 'null'; await nextFrame()) {
+        if (performance.now() - started > 30000) throw new Error('the example did not open in 30 s');
+      }
     } finally {
       mounting = null;
-    }
-    addGuest({ root: this.#stage, events: this.shadowRoot, canvas: () => this.#canvas, wasm: glue });
-    // GPUI sets the pointer's shape on the body: leaving the element gives
-    // the page its own back.
-    this.addEventListener('pointerleave', () => document.body.style.removeProperty('cursor'));
-    // The window opens once the canvas has its size.
-    for (const started = performance.now(); glue.stats() === 'null'; await nextFrame()) {
-      if (performance.now() - started > 30000) throw new Error('the example did not open in 30 s');
     }
     this.#glue = glue;
     const theme = this.getAttribute('theme');

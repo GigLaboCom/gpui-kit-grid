@@ -261,9 +261,9 @@ mod layout {
         // enum no longer has, bid size hidden. The merge finds the columns
         // by their derived ids.
         let saved = GridLayout::new()
-            .with_column(LayoutColumn::new(OrderColumn::Price.column_id(), 120.))
-            .with_column(LayoutColumn::new("venue", 70.))
-            .with_column(LayoutColumn::new("bid_size", 80.).with_visible(false));
+            .with_column(LayoutColumn::new(OrderColumn::Price.column_id(), 120_f32))
+            .with_column(LayoutColumn::new("venue", 70_f32))
+            .with_column(LayoutColumn::new("bid_size", 80_f32).with_visible(false));
         let text = codec.encode(&saved).unwrap();
         let report = grid
             .update(cx, |grid, cx| grid.import_layout(&text, cx))

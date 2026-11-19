@@ -22,7 +22,7 @@ guides:
   "Rules for coding agents", "Implementation checklist".
 
 Reference the canonical `website/docs/` originals, not the vendored copies under
-`skills/`: on gpui-kit `next` the copies have drifted.
+`skills/`: they drift (in v0.10.0 the coding guide's copy differs).
 
 These guides are requirements, not optional inspiration. Review the finished
 work against both guides before considering it complete.

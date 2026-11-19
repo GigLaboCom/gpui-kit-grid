@@ -42,7 +42,7 @@ use gpui_kit::base::actions::{
     Cancel, Confirm, SelectDown, SelectFirst, SelectLast, SelectNextColumn, SelectPageDown,
     SelectPageUp, SelectPrevColumn, SelectUp,
 };
-use gpui_kit::{App, KeyBinding, NoAction};
+use gpui_kit::{Action, App, KeyBinding, KeyBindingContextPredicate, NoAction, OperatingSystem};
 
 /// The key context of the grid root.
 pub const KEY_CONTEXT: &str = "LiveGrid";
@@ -218,7 +218,8 @@ gpui_kit::actions!(
 );
 
 /// The default keymap in [`KEY_CONTEXT`]: Excel's, with Cmd on macOS.
-/// `secondary-` is Cmd on macOS and Ctrl elsewhere, so one entry serves
+/// `secondary-` is Cmd on a macOS host, in a browser there too, and Ctrl
+/// elsewhere, as `cx.platform_info()` reports the host, so one entry serves
 /// every platform.
 ///
 /// The context menu opens with Shift+F10 and the Menu key (`menu`; Mac
@@ -236,20 +237,27 @@ gpui_kit::actions!(
 ///
 /// In [`COLUMN_CHOOSER_KEY_CONTEXT`], Alt+↑ and Alt+↓ move the highlighted
 /// column up and down its zone, and Space shows or hides it.
-pub fn key_bindings() -> Vec<KeyBinding> {
-    let mut bindings = grid_key_bindings();
-    let editor = editor_key_bindings();
+pub fn key_bindings(cx: &App) -> Vec<KeyBinding> {
+    let os = cx.platform_info().os;
+    let mut bindings = grid_key_bindings(cx);
+    let editor = editor_key_bindings(cx);
     // Every key of the grid without a binding of its own in the editor.
-    let own: Vec<String> = editor.iter().filter_map(binding_key).collect();
+    let own: Vec<String> = editor
+        .iter()
+        .filter_map(|binding| binding_key(binding, os))
+        .collect();
     let mut silenced: Vec<String> = Vec::new();
-    for key in bindings.iter().filter_map(binding_key) {
+    for key in bindings
+        .iter()
+        .filter_map(|binding| binding_key(binding, os))
+    {
         if !own.contains(&key) && !silenced.contains(&key) {
             silenced.push(key);
         }
     }
     let silenced = silenced
         .iter()
-        .map(|key| KeyBinding::new(key, NoAction, Some(EDITOR_KEY_CONTEXT)));
+        .map(|key| bind(key, NoAction, Some(EDITOR_KEY_CONTEXT), cx));
     bindings.extend(group_panel_key_bindings());
     bindings.extend(editor);
     bindings.extend(silenced);
@@ -257,69 +265,96 @@ pub fn key_bindings() -> Vec<KeyBinding> {
     bindings
 }
 
-/// The keystroke of a binding, as text that parses back to it.
-fn binding_key(binding: &KeyBinding) -> Option<String> {
+/// A binding of `keystrokes` in `context`, `secondary-` resolved for the
+/// host (`KeyBinding::new` takes explicit modifiers only).
+fn bind(keystrokes: &str, action: impl Action, context: Option<&str>, cx: &App) -> KeyBinding {
+    let predicate = context.map(|context| {
+        KeyBindingContextPredicate::parse(context)
+            .expect("valid key context")
+            .into()
+    });
+    KeyBinding::load(keystrokes, Box::new(action), predicate, false, None, cx)
+        .expect("valid keystroke")
+}
+
+/// The keystroke of a binding, as text that parses back to it on `os`.
+fn binding_key(binding: &KeyBinding, os: OperatingSystem) -> Option<String> {
     match binding.keystrokes() {
-        [keystroke] => Some(keystroke.inner().unparse()),
+        [keystroke] => Some(keystroke.inner().unparse(os)),
         _ => None,
     }
 }
 
 /// The bindings of [`KEY_CONTEXT`], `ActivateCell` on a control included.
-fn grid_key_bindings() -> Vec<KeyBinding> {
+fn grid_key_bindings(cx: &App) -> Vec<KeyBinding> {
     let context = Some(KEY_CONTEXT);
     vec![
-        KeyBinding::new("up", SelectUp, context),
-        KeyBinding::new("down", SelectDown, context),
-        KeyBinding::new("left", SelectPrevColumn, context),
-        KeyBinding::new("right", SelectNextColumn, context),
-        KeyBinding::new("pageup", SelectPageUp, context),
-        KeyBinding::new("pagedown", SelectPageDown, context),
-        KeyBinding::new("home", SelectFirst, context),
-        KeyBinding::new("end", SelectLast, context),
-        KeyBinding::new("secondary-left", SelectFirst, context),
-        KeyBinding::new("secondary-right", SelectLast, context),
-        KeyBinding::new("secondary-up", SelectFirstRow, context),
-        KeyBinding::new("secondary-down", SelectLastRow, context),
-        KeyBinding::new("secondary-home", SelectFirstCell, context),
-        KeyBinding::new("secondary-end", SelectLastCell, context),
-        KeyBinding::new("shift-up", ExtendSelectionUp, context),
-        KeyBinding::new("shift-down", ExtendSelectionDown, context),
-        KeyBinding::new("shift-left", ExtendSelectionPrevColumn, context),
-        KeyBinding::new("shift-right", ExtendSelectionNextColumn, context),
-        KeyBinding::new("shift-pageup", ExtendSelectionPageUp, context),
-        KeyBinding::new("shift-pagedown", ExtendSelectionPageDown, context),
-        KeyBinding::new("shift-home", ExtendSelectionToFirst, context),
-        KeyBinding::new("shift-end", ExtendSelectionToLast, context),
-        KeyBinding::new("shift-secondary-left", ExtendSelectionToFirst, context),
-        KeyBinding::new("shift-secondary-right", ExtendSelectionToLast, context),
-        KeyBinding::new("shift-secondary-up", ExtendSelectionToFirstRow, context),
-        KeyBinding::new("shift-secondary-down", ExtendSelectionToLastRow, context),
-        KeyBinding::new("shift-secondary-home", ExtendSelectionToFirstCell, context),
-        KeyBinding::new("shift-secondary-end", ExtendSelectionToLastCell, context),
-        KeyBinding::new("secondary-a", SelectAll, context),
-        KeyBinding::new("space", ToggleSelection, context),
-        KeyBinding::new("enter", Confirm { secondary: false }, context),
-        KeyBinding::new("secondary-enter", Confirm { secondary: true }, context),
-        KeyBinding::new("escape", Cancel, context),
+        bind("up", SelectUp, context, cx),
+        bind("down", SelectDown, context, cx),
+        bind("left", SelectPrevColumn, context, cx),
+        bind("right", SelectNextColumn, context, cx),
+        bind("pageup", SelectPageUp, context, cx),
+        bind("pagedown", SelectPageDown, context, cx),
+        bind("home", SelectFirst, context, cx),
+        bind("end", SelectLast, context, cx),
+        bind("secondary-left", SelectFirst, context, cx),
+        bind("secondary-right", SelectLast, context, cx),
+        bind("secondary-up", SelectFirstRow, context, cx),
+        bind("secondary-down", SelectLastRow, context, cx),
+        bind("secondary-home", SelectFirstCell, context, cx),
+        bind("secondary-end", SelectLastCell, context, cx),
+        bind("shift-up", ExtendSelectionUp, context, cx),
+        bind("shift-down", ExtendSelectionDown, context, cx),
+        bind("shift-left", ExtendSelectionPrevColumn, context, cx),
+        bind("shift-right", ExtendSelectionNextColumn, context, cx),
+        bind("shift-pageup", ExtendSelectionPageUp, context, cx),
+        bind("shift-pagedown", ExtendSelectionPageDown, context, cx),
+        bind("shift-home", ExtendSelectionToFirst, context, cx),
+        bind("shift-end", ExtendSelectionToLast, context, cx),
+        bind("shift-secondary-left", ExtendSelectionToFirst, context, cx),
+        bind("shift-secondary-right", ExtendSelectionToLast, context, cx),
+        bind("shift-secondary-up", ExtendSelectionToFirstRow, context, cx),
+        bind(
+            "shift-secondary-down",
+            ExtendSelectionToLastRow,
+            context,
+            cx,
+        ),
+        bind(
+            "shift-secondary-home",
+            ExtendSelectionToFirstCell,
+            context,
+            cx,
+        ),
+        bind(
+            "shift-secondary-end",
+            ExtendSelectionToLastCell,
+            context,
+            cx,
+        ),
+        bind("secondary-a", SelectAll, context, cx),
+        bind("space", ToggleSelection, context, cx),
+        bind("enter", Confirm { secondary: false }, context, cx),
+        bind("secondary-enter", Confirm { secondary: true }, context, cx),
+        bind("escape", Cancel, context, cx),
         // Copy and the context menu.
-        KeyBinding::new("secondary-c", Copy, context),
-        KeyBinding::new("shift-f10", ShowContextMenu, context),
-        KeyBinding::new("menu", ShowContextMenu, context),
+        bind("secondary-c", Copy, context, cx),
+        bind("shift-f10", ShowContextMenu, context, cx),
+        bind("menu", ShowContextMenu, context, cx),
         // Expanding and collapsing. `+` is typed as Shift+= on a US layout,
         // which matches both bindings.
-        KeyBinding::new("+", ExpandRow, context),
-        KeyBinding::new("shift-=", ExpandRow, context),
-        KeyBinding::new("-", CollapseRow, context),
+        bind("+", ExpandRow, context, cx),
+        bind("shift-=", ExpandRow, context, cx),
+        bind("-", CollapseRow, context, cx),
         // Editing.
-        KeyBinding::new("f2", StartEdit, context),
-        KeyBinding::new("backspace", StartEditEmpty, context),
-        KeyBinding::new("delete", StartEditEmpty, context),
+        bind("f2", StartEdit, context, cx),
+        bind("backspace", StartEditEmpty, context, cx),
+        bind("delete", StartEditEmpty, context, cx),
         // After `ToggleSelection`, so it comes first on a control (same depth,
         // later binding); unhandled, Space goes on to `ToggleSelection`.
-        KeyBinding::new("space", ActivateCell, Some(CONTROL_CELL_CONTEXT)),
+        bind("space", ActivateCell, Some(CONTROL_CELL_CONTEXT), cx),
         // Enter opens a focused link; unhandled, it goes on to `Confirm`.
-        KeyBinding::new("enter", OpenLink, Some(LINK_CELL_CONTEXT)),
+        bind("enter", OpenLink, Some(LINK_CELL_CONTEXT), cx),
     ]
 }
 
@@ -335,17 +370,17 @@ fn group_panel_key_bindings() -> [KeyBinding; 4] {
 }
 
 /// The editor's own bindings in [`EDITOR_KEY_CONTEXT`].
-fn editor_key_bindings() -> Vec<KeyBinding> {
+fn editor_key_bindings(cx: &App) -> Vec<KeyBinding> {
     let context = Some(EDITOR_KEY_CONTEXT);
     vec![
-        KeyBinding::new("enter", CommitEdit, context),
-        KeyBinding::new("secondary-enter", CommitEdit, context),
-        KeyBinding::new("shift-enter", CommitEditUp, context),
-        KeyBinding::new("up", CommitEditUp, context),
-        KeyBinding::new("down", CommitEditDown, context),
-        KeyBinding::new("tab", CommitEditNext, context),
-        KeyBinding::new("shift-tab", CommitEditPrev, context),
-        KeyBinding::new("escape", CancelEdit, context),
+        bind("enter", CommitEdit, context, cx),
+        bind("secondary-enter", CommitEdit, context, cx),
+        bind("shift-enter", CommitEditUp, context, cx),
+        bind("up", CommitEditUp, context, cx),
+        bind("down", CommitEditDown, context, cx),
+        bind("tab", CommitEditNext, context, cx),
+        bind("shift-tab", CommitEditPrev, context, cx),
+        bind("escape", CancelEdit, context, cx),
     ]
 }
 
@@ -363,27 +398,51 @@ fn column_chooser_key_bindings() -> [KeyBinding; 3] {
 /// Binds [`key_bindings`]. Call once, after `gpui_kit::init`. Without it the
 /// mouse works and the keys do not.
 pub fn init(cx: &mut App) {
-    cx.bind_keys(key_bindings());
+    let bindings = key_bindings(cx);
+    cx.bind_keys(bindings);
 }
 
-#[cfg(test)]
+// `key_bindings` reads the host from an `App`: the test platform's.
+#[cfg(all(test, feature = "test-support"))]
 mod tests {
     use std::collections::{HashMap, HashSet};
 
-    use gpui_kit::Keystroke;
+    use gpui_kit::{Keystroke, PlatformInfo, PlatformTarget, TestAppContext};
 
     use super::*;
 
     /// A binding as "keystroke → action name", the keystroke in its parsed
-    /// form, so `secondary-a` and the platform's `cmd-a` agree.
-    fn binding(keystroke: &str, action: &str) -> (String, String) {
-        let keystroke = Keystroke::parse(keystroke).expect("valid keystroke");
-        (keystroke.unparse(), action.to_string())
+    /// form on `os`, so `secondary-a` and the host's `cmd-a` agree.
+    fn binding(keystroke: &str, action: &str, os: OperatingSystem) -> (String, String) {
+        let keystroke = Keystroke::parse_with_os(keystroke, os).expect("valid keystroke");
+        (keystroke.unparse(os), action.to_string())
     }
 
-    #[test]
-    fn test_key_bindings() {
-        let bindings = key_bindings();
+    #[gpui_kit::test]
+    fn test_key_bindings(cx: &mut TestAppContext) {
+        for (os, select_all) in [
+            (OperatingSystem::Mac, "cmd-a"),
+            (OperatingSystem::Linux, "ctrl-a"),
+            (OperatingSystem::Windows, "ctrl-a"),
+        ] {
+            cx.set_platform_info(PlatformInfo {
+                os,
+                target: PlatformTarget::Native,
+            });
+            let bindings = cx.update(|cx| key_bindings(cx));
+            // `secondary-` is the host's modifier.
+            assert!(
+                bindings.iter().any(|binding| {
+                    binding.action().as_any().is::<SelectAll>()
+                        && binding_key(binding, os).as_deref() == Some(select_all)
+                }),
+                "{select_all} on {os:?}"
+            );
+            assert_key_bindings(bindings, os);
+        }
+    }
+
+    fn assert_key_bindings(bindings: Vec<KeyBinding>, os: OperatingSystem) {
         // Bindings by context, each key once per context.
         let mut by_context: HashMap<String, HashSet<(String, String)>> = HashMap::new();
         let mut keys_by_context: HashMap<String, HashSet<String>> = HashMap::new();
@@ -391,7 +450,7 @@ mod tests {
             let [keystroke] = binding.keystrokes() else {
                 panic!("one keystroke per binding");
             };
-            let key = keystroke.inner().unparse();
+            let key = keystroke.inner().unparse(os);
             let context = binding
                 .predicate()
                 .expect("every binding has a context")
@@ -411,7 +470,7 @@ mod tests {
         let set = |table: &[(&str, &str)]| -> HashSet<(String, String)> {
             let set: HashSet<_> = table
                 .iter()
-                .map(|(keystroke, action)| binding(keystroke, action))
+                .map(|(keystroke, action)| binding(keystroke, action, os))
                 .collect();
             assert_eq!(set.len(), table.len());
             set
@@ -518,9 +577,9 @@ mod tests {
         ]);
         assert_eq!(by_context, expected);
         assert!(
-            by_context[EDITOR_KEY_CONTEXT].contains(&binding("left", "zed::NoAction"))
-                && by_context[EDITOR_KEY_CONTEXT].contains(&binding("f2", "zed::NoAction"))
-                && by_context[EDITOR_KEY_CONTEXT].contains(&binding("space", "zed::NoAction")),
+            by_context[EDITOR_KEY_CONTEXT].contains(&binding("left", "zed::NoAction", os))
+                && by_context[EDITOR_KEY_CONTEXT].contains(&binding("f2", "zed::NoAction", os))
+                && by_context[EDITOR_KEY_CONTEXT].contains(&binding("space", "zed::NoAction", os)),
             "the grid's navigation and commands are silenced in the editor"
         );
 
@@ -564,7 +623,9 @@ mod tests {
         );
         // Tab leaves the grid: free in the grid, bound in the editor.
         for free in ["tab", "shift-tab"] {
-            let key = Keystroke::parse(free).expect("valid keystroke").unparse();
+            let key = Keystroke::parse_with_os(free, os)
+                .expect("valid keystroke")
+                .unparse(os);
             assert!(
                 !keys_by_context[KEY_CONTEXT].contains(&key),
                 "{free} is bound"

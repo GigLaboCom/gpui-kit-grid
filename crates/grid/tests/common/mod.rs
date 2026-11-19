@@ -22,10 +22,10 @@ use chrono::{DateTime, TimeZone as _, Utc};
 use gpui_kit::component::{Sizable as _, Size};
 use gpui_kit::{
     AnyWindowHandle, App, AppContext as _, Bounds, Context, ElementId, Entity, Focusable as _,
-    InputEvent, InteractiveElement as _, IntoElement, Modifiers, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, ParentElement as _, Pixels, Point, Render, Role,
-    StatefulInteractiveElement as _, Styled as _, Task, TestAppContext, Window, WindowBounds,
-    WindowOptions, div,
+    InputEvent, InteractiveElement as _, IntoElement, Modifiers, ModifiersChangedEvent,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement as _, Pixels, Point,
+    Render, Role, StatefulInteractiveElement as _, Styled as _, Task, TestAppContext, Window,
+    WindowBounds, WindowOptions, div,
     prelude::FluentBuilder as _,
     px, size,
     test::{TestSupportExt as _, TestWindowExt as _},
@@ -327,6 +327,10 @@ pub fn click_with(
 /// Moves the pointer to a window position, then presses and releases
 /// `button` there once. `click_count` numbers the press within a series:
 /// `2` is the second press of a double click.
+///
+/// The keys are let go after the press, as a user would: GPUI keeps the
+/// modifiers of the last mouse event as the window's, and gpui-kit's
+/// `TestWindowExt::click` presses with the window's modifiers.
 pub fn press_at(
     window: &mut Window,
     position: Point<Pixels>,
@@ -335,8 +339,19 @@ pub fn press_at(
     click_count: usize,
     cx: &mut App,
 ) {
+    let held = window.modifiers();
     mouse_down_at(window, position, button, modifiers, click_count, cx);
     mouse_up_at(window, position, button, modifiers, click_count, cx);
+    if window.modifiers() != held {
+        dispatch(
+            window,
+            ModifiersChangedEvent {
+                modifiers: held,
+                capslock: window.capslock(),
+            },
+            cx,
+        );
+    }
 }
 
 /// Moves the pointer to a window position and presses `button` without
@@ -1559,7 +1574,7 @@ impl Pair {
             let modifiers = if ix == 0 {
                 Modifiers::default()
             } else {
-                Modifiers::secondary_key()
+                cx.update(|cx| Modifiers::secondary_key(cx))
             };
             self.click(cx, self.line(false, *line), modifiers);
         }

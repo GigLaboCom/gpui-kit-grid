@@ -515,7 +515,11 @@ fn main() {
             gpui_kit::init(cx);
             gpui_kit_grid::init(cx);
             cx.bind_keys([KeyBinding::new(
-                "secondary-f",
+                if cx.platform_info().is_mac() {
+                    "cmd-f"
+                } else {
+                    "ctrl-f"
+                },
                 FocusFilter,
                 Some(KEY_CONTEXT),
             )]);

@@ -238,10 +238,10 @@ fn by_price(direction: SortDirection) -> ViewSpec<Item> {
     ViewSpec::new().with_sort([(Col::Price, direction)])
 }
 
-fn shift_secondary() -> Modifiers {
+fn shift_secondary(cx: &mut TestAppContext) -> Modifiers {
     Modifiers {
         shift: true,
-        ..Modifiers::secondary_key()
+        ..cx.update(|cx| Modifiers::secondary_key(cx))
     }
 }
 
@@ -519,16 +519,18 @@ fn test_mouse_modifiers(cx: &mut TestAppContext) {
     range.sort_unstable();
     assert_eq!(fixture.selected(cx), range);
     // Cmd/Ctrl toggles; it sets the anchor.
-    fixture.click(cx, 3, Modifiers::secondary_key());
+    let secondary = cx.update(|cx| Modifiers::secondary_key(cx));
+    fixture.click(cx, 3, secondary);
     let mut toggled = range.clone();
     toggled.retain(|key| *key != keys[3]);
     assert_eq!(fixture.selected(cx), toggled);
-    fixture.click(cx, 8, Modifiers::secondary_key());
+    fixture.click(cx, 8, secondary);
     toggled.push(keys[8]);
     toggled.sort_unstable();
     assert_eq!(fixture.selected(cx), toggled);
     // Shift with Cmd/Ctrl adds the range from the anchor.
-    fixture.click(cx, 6, shift_secondary());
+    let modifiers = shift_secondary(cx);
+    fixture.click(cx, 6, modifiers);
     let mut added = toggled.clone();
     added.extend(&keys[6..=8]);
     added.sort_unstable();

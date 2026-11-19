@@ -37,7 +37,7 @@ The grid's Actions are in `gpui_kit_grid::actions`, handled in the `actions::KEY
 
 - Rebind a key in the same context after `init`: the later binding wins.
 - Unbind one with `NoAction`.
-- Skip `init` and bind a filtered `actions::key_bindings()`, or your own keys to the actions, instead.
+- Skip `init` and bind a filtered `actions::key_bindings(cx)`, or your own keys to the actions, instead.
 - `actions::ClearAllSorting`, `ExpandAll`, `CollapseAll` and the column commands act on the focused grid; column commands act on `current_column()`, the header pressed last or the focused cell's column.
 
 ## The context menu

@@ -1028,7 +1028,15 @@ fn main() {
             gpui_kit_grid::init(cx);
             cx.bind_keys([
                 KeyBinding::new("f5", Reload, Some(KEY_CONTEXT)),
-                KeyBinding::new("secondary-f", FocusFilter, Some(KEY_CONTEXT)),
+                KeyBinding::new(
+                    if cx.platform_info().is_mac() {
+                        "cmd-f"
+                    } else {
+                        "ctrl-f"
+                    },
+                    FocusFilter,
+                    Some(KEY_CONTEXT),
+                ),
             ]);
             let options = WindowOptions {
                 window_bounds: Some(WindowBounds::Maximized(Bounds::centered(

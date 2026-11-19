@@ -1117,8 +1117,8 @@ mod tests {
             hidden("c5", 77.),
         ]));
         let saved = GridLayout::new()
-            .with_column(LayoutColumn::new("c3", 70.))
-            .with_column(LayoutColumn::new("gone", 70.))
+            .with_column(LayoutColumn::new("c3", 70_f32))
+            .with_column(LayoutColumn::new("gone", 70_f32))
             .with_sort([
                 LayoutSort::new("c4", SortDirection::Descending),
                 LayoutSort::new("gone", SortDirection::Ascending),

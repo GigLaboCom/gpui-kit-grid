@@ -18,8 +18,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     App, AppContext as _, Context, Entity, FontWeight, InteractiveElement as _, IntoElement,
-    KeyBinding, Keystroke, ParentElement as _, Pixels, Render, SharedString, Styled as _,
-    Subscription, Task, Window, div, prelude::FluentBuilder as _, px,
+    KeyBinding, ParentElement as _, Pixels, Render, SharedString, Styled as _, Subscription, Task,
+    Window, div, prelude::FluentBuilder as _, px,
 };
 use gpui_kit_grid::{
     Clock, ExpandDepth, GridStore, HoldReorder, LiveGrid, LiveGridState, ManualReorder,
@@ -46,7 +46,7 @@ use self::{
     theme::PerfTheme,
     ui::{GAP, PAGE_PADDING, ROW_HEIGHT},
 };
-use crate::trading::theme::TradingTheme as _;
+use crate::trading::{keys, theme::TradingTheme as _};
 
 gpui_kit::actions!(
     perf,
@@ -96,17 +96,17 @@ enum Command {
 }
 
 impl Command {
-    fn binding(self, keystrokes: &str) -> KeyBinding {
+    fn binding(self, keystrokes: &str, cx: &App) -> KeyBinding {
         let context = Some(KEY_CONTEXT);
         match self {
-            Self::PauseOrder => KeyBinding::new(keystrokes, PauseOrder, context),
-            Self::Arrange(Arrangement::Tree) => KeyBinding::new(keystrokes, ShowTree, context),
-            Self::Arrange(Arrangement::Flat) => KeyBinding::new(keystrokes, ShowFlat, context),
-            Self::Arrange(Arrangement::User) => KeyBinding::new(keystrokes, ShowByUser, context),
-            Self::Arrange(Arrangement::App) => KeyBinding::new(keystrokes, ShowByApp, context),
-            Self::FocusSearch => KeyBinding::new(keystrokes, FocusSearch, context),
-            Self::ExpandAll => KeyBinding::new(keystrokes, ExpandAll, context),
-            Self::CollapseAll => KeyBinding::new(keystrokes, CollapseAll, context),
+            Self::PauseOrder => keys::bind(keystrokes, PauseOrder, context, cx),
+            Self::Arrange(Arrangement::Tree) => keys::bind(keystrokes, ShowTree, context, cx),
+            Self::Arrange(Arrangement::Flat) => keys::bind(keystrokes, ShowFlat, context, cx),
+            Self::Arrange(Arrangement::User) => keys::bind(keystrokes, ShowByUser, context, cx),
+            Self::Arrange(Arrangement::App) => keys::bind(keystrokes, ShowByApp, context, cx),
+            Self::FocusSearch => keys::bind(keystrokes, FocusSearch, context, cx),
+            Self::ExpandAll => keys::bind(keystrokes, ExpandAll, context, cx),
+            Self::CollapseAll => keys::bind(keystrokes, CollapseAll, context, cx),
         }
     }
 
@@ -123,9 +123,9 @@ impl Command {
     }
 }
 
-fn key_bindings() -> Vec<KeyBinding> {
+fn key_bindings(cx: &App) -> Vec<KeyBinding> {
     KEYS.iter()
-        .map(|(keystrokes, command)| command.binding(keystrokes))
+        .map(|(keystrokes, command)| command.binding(keystrokes, cx))
         .collect()
 }
 
@@ -569,9 +569,10 @@ impl Perf {
     fn render_status(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
         let shown = self.grid.read(cx).projection().row_count();
+        let platform = cx.platform_info();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
             let hint = command.hint()?;
-            let keystroke = Keystroke::parse(keystrokes).ok()?;
+            let keystroke = keys::keystroke(keystrokes, platform)?;
             Some(
                 h_flex()
                     .gap(px(5.))
@@ -684,19 +685,24 @@ fn start_sampler(
 pub fn configure(cx: &mut App) {
     crate::trading::theme::install::<PerfTheme>(cx);
     PerfTheme::Graphite.apply(cx);
-    cx.bind_keys(key_bindings());
+    cx.bind_keys(key_bindings(cx));
 }
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{Keystroke, OperatingSystem};
+
     use super::*;
 
     #[test]
     fn test_keys_parse_and_name_each_command_once() {
-        let bindings = key_bindings();
-        assert_eq!(bindings.len(), KEYS.len());
         for (ix, (keystrokes, command)) in KEYS.iter().enumerate() {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS[ix + 1..]
                     .iter()

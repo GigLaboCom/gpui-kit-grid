@@ -21,8 +21,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     App, AppContext as _, Context, Entity, FocusHandle, Focusable, FontWeight,
-    InteractiveElement as _, IntoElement, KeyBinding, Keystroke, MouseButton, ParentElement as _,
-    Pixels, Render, SharedString, StyleRefinement, Styled as _, Subscription, Task, Window, div,
+    InteractiveElement as _, IntoElement, KeyBinding, MouseButton, ParentElement as _, Pixels,
+    Render, SharedString, StyleRefinement, Styled as _, Subscription, Task, Window, div,
     prelude::FluentBuilder as _, px,
 };
 use gpui_kit_grid::{
@@ -60,7 +60,7 @@ use self::{
     ui::{GAP, PAGE_PADDING, ROW_HEIGHT, thousands},
     zone::{Day, Zone},
 };
-use crate::trading::theme::TradingTheme as _;
+use crate::trading::{keys, theme::TradingTheme as _};
 
 gpui_kit::actions!(
     transit,
@@ -111,15 +111,15 @@ enum Command {
 }
 
 impl Command {
-    fn binding(self, keystrokes: &str) -> KeyBinding {
+    fn binding(self, keystrokes: &str, cx: &App) -> KeyBinding {
         let table = Some(TABLE_KEYS);
         match self {
-            Self::Warp => KeyBinding::new(keystrokes, CycleWarp, table),
-            Self::Grouping => KeyBinding::new(keystrokes, CycleGrouping, table),
-            Self::Zoom => KeyBinding::new(keystrokes, ToggleZoom, table),
-            Self::City => KeyBinding::new(keystrokes, CycleCity, table),
-            Self::MoreLines => KeyBinding::new(keystrokes, ToggleMoreLines, table),
-            Self::FocusSearch => KeyBinding::new(keystrokes, FocusSearch, Some(KEY_CONTEXT)),
+            Self::Warp => keys::bind(keystrokes, CycleWarp, table, cx),
+            Self::Grouping => keys::bind(keystrokes, CycleGrouping, table, cx),
+            Self::Zoom => keys::bind(keystrokes, ToggleZoom, table, cx),
+            Self::City => keys::bind(keystrokes, CycleCity, table, cx),
+            Self::MoreLines => keys::bind(keystrokes, ToggleMoreLines, table, cx),
+            Self::FocusSearch => keys::bind(keystrokes, FocusSearch, Some(KEY_CONTEXT), cx),
         }
     }
 
@@ -137,9 +137,9 @@ impl Command {
 }
 
 /// Every binding of `KEYS`.
-fn key_bindings() -> Vec<KeyBinding> {
+fn key_bindings(cx: &App) -> Vec<KeyBinding> {
     KEYS.iter()
-        .map(|(keystrokes, command)| command.binding(keystrokes))
+        .map(|(keystrokes, command)| command.binding(keystrokes, cx))
         .collect()
 }
 
@@ -311,7 +311,7 @@ pub fn setup(cx: &mut App) {
 pub fn configure(cx: &mut App) {
     crate::trading::theme::install::<TransitTheme>(cx);
     TransitTheme::Paper.apply(cx);
-    cx.bind_keys(key_bindings());
+    cx.bind_keys(key_bindings(cx));
 }
 
 /// The transit view in `window`, the keyboard in its table, its producer
@@ -799,8 +799,9 @@ impl Transit {
             City::Helsinki => "Helsinki live",
         };
         let choice = self.choice;
+        let platform = cx.platform_info();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
-            let keystroke = Keystroke::parse(keystrokes).ok()?;
+            let keystroke = keys::keystroke(keystrokes, platform)?;
             Some(
                 h_flex()
                     .gap(px(5.))
@@ -1636,14 +1637,19 @@ impl Render for Transit {
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{Keystroke, OperatingSystem};
+
     use super::*;
 
     #[test]
     fn test_keys_parse_and_name_each_command_once() {
-        let bindings = key_bindings();
-        assert_eq!(bindings.len(), KEYS.len());
         for (ix, (keystrokes, command)) in KEYS.iter().enumerate() {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS[ix + 1..]
                     .iter()
