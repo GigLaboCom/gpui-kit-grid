@@ -119,7 +119,10 @@ fi
 # recordings when their release is there): read from any origin through the
 # element and asked for again each time, as the modules are; a text file goes
 # out compressed and an archive as it is; each has a licence note to read.
-data="$(cd "$dist" && find demo/data -type f ! -name '*.license' 2>/dev/null | sort)"
+data=""
+if [[ -d "$dist/demo/data" ]]; then
+  data="$(cd "$dist" && find demo/data -type f ! -name '*.license' | sort)"
+fi
 if [[ -n "$data" ]]; then
   for file in $data; do
     got="$(headers "/$file" -H 'Accept-Encoding: gzip')"
