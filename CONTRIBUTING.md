@@ -193,25 +193,31 @@ Changes pile up on `main` through pull requests; a tag cuts a release.
 
 | | Tags | What a tag does |
 |---|---|---|
-| The library | `vX.Y.Z` | CI runs on the tag; once every job passes, its Release job checks that the tag names the crates' version and that the site's install snippets name the tag, scans the history for secrets, publishes `gpui-kit-grid-macros` and `gpui-kit-grid` on crates.io (see [crates.io](#cratesio)) and opens the GitHub release (the repository's latest) with the `Cargo.toml` lines to use. |
+| The library | `vX.Y.Z` | CI runs on the tag; once every job passes, its Release job checks that the tag names the crates' version and that the install snippets ask for it, scans the history for secrets, publishes `gpui-kit-grid-macros` and `gpui-kit-grid` on crates.io (see [crates.io](#cratesio)) and opens the GitHub release (the repository's latest) with the `Cargo.toml` lines to use. |
 | The site | `site-vX.Y.Z` | `.github/workflows/site.yml` scans the history for secrets, publishes the image `ghcr.io/giglabocom/gpui-kit-grid-site` (`X.Y.Z`, `X.Y`, `X` from 1.0, `latest`; amd64 and arm64) and opens a GitHub release with the site's commits since its last tag. The host behind https://gkg.giglabo.com runs that image and moves to the new version itself. |
 
 ### The library
 
 Versions follow semver: the public API of `gpui-kit-grid`,
 `gpui-kit-grid-feed` and `gpui-kit-grid-macros` (and the gateway binary,
-which ships with them) share one version.
+which ships with them) share one version. gpui-kit pins its GPUI snapshot
+exactly and the grid's API shows gpui-kit's types, so each minor release of
+gpui-kit the grid moves to is a new major version of the grid; the
+compatibility table in `README.md` and on the Getting started page lists
+them.
 
 1. In a pull request, set `version` in `crates/grid`, `crates/grid-feed`,
    `crates/grid-macros` and `crates/grid-gateway` (`Cargo.toml`), let cargo
-   update both lock files (`Cargo.lock`, `crates/grid-web/Cargo.lock`), and
-   name the new tag in the install snippets
-   (`site/src/content/docs/start.md`, `guides/columns.md`).
+   update both lock files (`Cargo.lock`, `crates/grid-web/Cargo.lock`), set
+   the workspace's requirement on `gpui-kit-grid-macros` to `=X.Y.Z`, and
+   ask for the new version in the install snippets (`"2"` for 2.x) and the
+   compatibility table (`README.md`, `site/src/content/docs/start.md`,
+   `guides/columns.md`).
 2. Merge it, then tag that commit of `main` and push the tag:
 
    ```bash
-   git tag -a v1.0.0 -m "gpui-kit-grid 1.0.0" origin/main
-   git push origin v1.0.0
+   git tag -a v2.0.0 -m "gpui-kit-grid 2.0.0" origin/main
+   git push origin v2.0.0
    ```
 
 A wrong tag fails the Release job before anything is published; delete it

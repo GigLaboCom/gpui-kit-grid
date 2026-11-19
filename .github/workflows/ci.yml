@@ -293,6 +293,15 @@ jobs:
       - name: The tag names the library's version
         run: |
           version="${TAG#v}"
+          # What the install snippets ask for: the major version, or 0.y.
+          major="${version%%.*}"
+          if [ "$major" = 0 ]; then
+            minor="${version#0.}"
+            requirement="0.${minor%%.*}"
+          else
+            requirement="$major"
+          fi
+          echo "REQUIREMENT=$requirement" >> "$GITHUB_ENV"
           for manifest in crates/grid/Cargo.toml crates/grid-feed/Cargo.toml \
             crates/grid-macros/Cargo.toml crates/grid-gateway/Cargo.toml; do
             actual="$(sed -n 's/^version = "\(.*\)"$/\1/p' "$manifest" | head -1)"
@@ -301,9 +310,16 @@ jobs:
               exit 1
             fi
           done
-          for page in site/src/content/docs/start.md site/src/content/docs/guides/columns.md; do
-            if ! grep -q "tag = \"$TAG\"" "$page"; then
-              echo "::error file=$page::the install snippet does not name $TAG"
+          for page in README.md site/src/content/docs/start.md site/src/content/docs/guides/columns.md; do
+            if ! grep -qE "^gpui-kit-grid = (\"$requirement\"|\{ version = \"$requirement\")" "$page"; then
+              echo "::error file=$page::the install snippet does not ask for gpui-kit-grid $requirement"
+              exit 1
+            fi
+          done
+          kit="$(sed -n 's/^gpui-kit = "\([^"]*\)"$/\1/p' Cargo.toml)"
+          for page in README.md site/src/content/docs/start.md; do
+            if ! grep -q "^gpui-kit = \"$kit\"$" "$page"; then
+              echo "::error file=$page::the install snippet does not ask for gpui-kit $kit, as Cargo.toml does"
               exit 1
             fi
           done
@@ -389,14 +405,15 @@ jobs:
           kit="$(sed -n 's/^gpui-kit = "\([^"]*\)"$/\1/p' Cargo.toml)"
           test -n "$kit"
           {
-            echo 'Add it from git, with the gpui-kit release it is built against (the crate is not on crates.io yet):'
+            echo 'Add it from crates.io, with the gpui-kit release it is built against:'
             echo
             echo '```toml'
             echo '[dependencies]'
             echo "gpui-kit = \"$kit\""
-            echo "gpui-kit-grid = { git = \"https://github.com/$GITHUB_REPOSITORY\", tag = \"$TAG\" }"
+            echo "gpui-kit-grid = \"$REQUIREMENT\""
             echo '```'
             echo
+            echo "crates.io: https://crates.io/crates/gpui-kit-grid/${TAG#v} · API: https://docs.rs/gpui-kit-grid/${TAG#v}"
             echo 'Getting started: https://gkg.giglabo.com/start/'
           } > "$RUNNER_TEMP/notes.md"
           previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$TAG^" 2>/dev/null || true)"

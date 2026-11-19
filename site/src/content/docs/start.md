@@ -7,17 +7,24 @@ gpui-kit-grid is a separate crate on top of [gpui-kit](https://gpui-kit.com). A 
 
 ## Install
 
-The crate is not on crates.io yet: it depends on gpui-kit by git revision, and crates.io takes no git dependencies. Add both from git, gpui-kit at the revision the grid is built against, so the application and the grid share one gpui-kit and one GPUI:
+Add the grid with the gpui-kit release it is built against, so the application and the grid share one gpui-kit and one GPUI:
 
 ```toml
 [dependencies]
-gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "146ab45ac0d0cc9dad5f5fd05ecd38da9b3db6e7" }
-gpui-kit-grid = { git = "https://github.com/GigLaboCom/gpui-kit-grid", tag = "v1.0.0" }
+gpui-kit = "0.10"
+gpui-kit-grid = "2"
 ```
+
+Each major version of the grid is built against one minor release of gpui-kit, which pins its GPUI snapshot exactly:
+
+| gpui-kit-grid | gpui-kit | Rust |
+|---|---|---|
+| 2 | 0.10 | 1.98 |
+| 1.0 (GitHub only, tag `v1.0.0`) | git revision `146ab45` | 1.95 |
 
 The application reaches GPUI through gpui-kit (`gpui_kit::App`, `gpui_kit::Window` and the rest), as the grid does; it does not list a GPUI crate of its own.
 
-Rust 1.95 or newer. Two features are off by default:
+Rust 1.98 or newer. Two features are off by default:
 
 | Feature | What it adds |
 |---|---|

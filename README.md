@@ -29,6 +29,23 @@ It is a separate crate on top of gpui-kit. Rows are addressed by key and written
 
 Measured with the headless `spike_bench` example (release, macOS); the [Performance](https://gkg.giglabo.com/performance/) page has every scenario.
 
+## Install
+
+```toml
+[dependencies]
+gpui-kit = "0.10"
+gpui-kit-grid = "2"
+```
+
+Each major version of the grid is built against one minor release of gpui-kit, which pins its GPUI snapshot exactly:
+
+| gpui-kit-grid | gpui-kit | Rust |
+|---|---|---|
+| 2 | 0.10 | 1.98 |
+| 1.0 (GitHub only, tag `v1.0.0`) | git revision `146ab45` | 1.95 |
+
+`decimal` (exact money values) and `derive` (`#[derive(GridColumns)]`) are off by default; [Getting started](https://gkg.giglabo.com/start/) walks through a first grid.
+
 ## Quick start
 
 ```sh
