@@ -235,11 +235,31 @@ the examples and the integration tests stay in the repository. Every pull
 request checks the files and versions (`bun script/check-package.ts`) and
 builds both crates from their packages (`cargo publish --dry-run`).
 
-The Release job publishes through crates.io's Trusted Publishing: each
-crate's settings on crates.io name the repository `GigLaboCom/gpui-kit-grid`
-and the workflow `ci.yml`, with no environment, so no token is stored. It
-skips a version crates.io has, and from the second release on it checks
-the grid's API against its last version first (`cargo semver-checks`).
+The Release job publishes through crates.io's Trusted Publishing, so no
+token is stored: GitHub vouches for the job, and crates.io gives it a token
+for 30 minutes. It skips a version crates.io has, and from the second
+release on it checks the grid's API against its last version first
+(`cargo semver-checks`).
+
+Each published crate names the job in its own settings, set by an owner
+of the crate once (both crates have it since 2026-11-19): on crates.io,
+the crate's **Settings**, **Trusted Publishing**, **Add**, **GitHub**:
+
+| Field | Value |
+|---|---|
+| Repository owner | `GigLaboCom` |
+| Repository name | `gpui-kit-grid` (for both crates: one repository, one workflow) |
+| Workflow filename | `ci.yml` (the file name, without `.github/workflows/`) |
+| Environment | empty |
+
+A crate without it does not publish from the Release job. Renaming
+`ci.yml` or moving the repository needs the same change in both crates'
+settings.
+
+The settings also have "Require trusted publishing for all new versions",
+which refuses publishing with a token. It stays off until the Release job
+has published a version itself, so a token remains the way out if that
+first run fails; then an owner turns it on for both crates.
 
 crates.io takes a Trusted Publisher only for a crate it has, so 2.0.0, the
 first version of both crates, went up by hand (2026-11-19, from the commit
