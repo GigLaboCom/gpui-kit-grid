@@ -6,6 +6,7 @@ import embed from './integrations/embed.mjs';
 import { satteri } from '@astrojs/markdown-satteri';
 import markdownRegions from './src/lib/markdown-regions.ts';
 import { consentHead } from './src/lib/consent.ts';
+import { SIDEBAR } from './src/lib/sidebar.ts';
 
 // The repository's root: code on the pages comes from regions of its
 // compiled files, and the roadmap page from its `ROADMAP.md`.
@@ -13,12 +14,13 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 
 // The site lives at the root of its own host, `gkg.giglabo.com`.
 const site = 'https://gkg.giglabo.com';
+// The root of the domain; `SITE_BASE=/path` serves the site under a path
+// instead, for a preview on another host.
+const base = process.env.SITE_BASE || '/';
 
 export default defineConfig({
   site,
-  // The root of the domain; `SITE_BASE=/path` serves the site under a path
-  // instead, for a preview on another host.
-  base: process.env.SITE_BASE || '/',
+  base,
   trailingSlash: 'always',
   markdown: {
     // Astro's own Markdown processor, with the regions plugin in front of
@@ -35,9 +37,26 @@ export default defineConfig({
         dark: './src/assets/mark-dark.svg',
       },
       favicon: '/favicon.svg',
-      // Google Consent Mode v2 defaults (all denied) and the GTM container,
-      // only on gkg.giglabo.com: src/lib/consent.ts; the banner is in Footer.
-      head: [{ tag: 'script', content: consentHead() }],
+      head: [
+        // Google Consent Mode v2 defaults (all denied) and the GTM container,
+        // only on gkg.giglabo.com: src/lib/consent.ts; the banner is in Footer.
+        { tag: 'script', content: consentHead() },
+        // A shared link shows the quotes poster under the crate's name, as
+        // the repository's social preview does. A page with a picture of its
+        // own sets `og:image` in its frontmatter, which wins.
+        {
+          tag: 'meta',
+          attrs: { property: 'og:image', content: new URL(`${base.replace(/\/$/, '')}/social-preview.png`, site).href },
+        },
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:image:alt',
+            content:
+              'gpui-kit-grid, a live data grid for Rust applications built with GPUI, over simulated quotes grouped by sector with changed cells in green and red',
+          },
+        },
+      ],
       social: [{ icon: 'github', label: 'Repository', href: 'https://github.com/GigLaboCom/gpui-kit-grid' }],
       customCss: [
         '@fontsource/ibm-plex-sans/latin-400.css',
@@ -51,47 +70,7 @@ export default defineConfig({
         ThemeSelect: './src/components/ThemeSelect.astro',
       },
       routeMiddleware: './src/routeData.ts',
-      sidebar: [
-        { slug: 'start', label: 'Start' },
-        // Kept near the top so the other products are seen (src/data/products.ts).
-        { slug: 'products', label: 'More from GigLabo', badge: { text: 'Products', variant: 'tip' } },
-        {
-          label: 'Concepts',
-          items: [
-            { slug: 'concepts', label: 'Overview' },
-            'concepts/replaceable-behaviors',
-          ],
-        },
-        {
-          label: 'Guides',
-          items: [
-            'guides/grouping',
-            'guides/tree',
-            'guides/live-changes',
-            'guides/cells',
-            'guides/editing',
-            'guides/export',
-            'guides/drag-and-drop',
-            'guides/columns',
-            'guides/keyboard',
-            'guides/settings',
-          ],
-        },
-        'cookbook',
-        'examples',
-        // Pages about one demo each, by what a reader may be looking for.
-        { label: 'Live demos', items: ['webgpu-demo', 'trade-blotter'] },
-        'performance',
-        { slug: 'web', label: 'Web' },
-        'play',
-        'embedding',
-        // rustdoc, which the site's CI build writes into `api/`.
-        { label: 'API', link: '/api/' },
-        // The released crates, and their API as docs.rs builds it.
-        { label: 'crates.io', link: 'https://crates.io/crates/gpui-kit-grid' },
-        'roadmap',
-        'sponsor',
-      ],
+      sidebar: SIDEBAR,
     }),
     // `<live-grid>` under `/embed/v1/`, from the examples' `www/embed/`.
     embed(),

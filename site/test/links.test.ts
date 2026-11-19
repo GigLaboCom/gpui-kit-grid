@@ -57,3 +57,27 @@ describe.skipIf(!existsSync(DIST))('links in dist/', () => {
     expect(broken).toEqual([]);
   });
 });
+
+// `/llms.txt` (src/pages/llms.txt.ts) links to the site by absolute address:
+// each of those lands on a page or a file as well.
+describe.skipIf(!existsSync(DIST))('llms.txt in dist/', () => {
+  const file = join(DIST, 'llms.txt');
+  const text = existsSync(file) ? readFileSync(file, 'utf8') : '';
+
+  test('it has the shape llmstxt.org gives: a title, a summary, sections', () => {
+    expect(text.startsWith('# gpui-kit-grid\n\n> ')).toBe(true);
+    expect(text).toContain('\n## Docs\n');
+    expect(text).toContain('\n## Optional\n');
+  });
+
+  test('every link to the site resolves', () => {
+    const links = [...text.matchAll(/\]\((https:\/\/gkg\.giglabo\.com\/[^)\s]*)\)/g)].map((match) => match[1]);
+    expect(links.length).toBeGreaterThan(20);
+    const broken = links.filter((link) => {
+      const path = new URL(link).pathname;
+      if (ASSEMBLED_BY_DEPLOY.some((prefix) => path === prefix || path.startsWith(prefix))) return false;
+      return !resolves(path);
+    });
+    expect(broken).toEqual([]);
+  });
+});

@@ -12,6 +12,8 @@ extend-ignore-re = [
 [default.extend-words]
 # Add a word here only with a comment that says why it is not a typo
 # (same rule as gpui-kit `_typos.toml`).
+# The terminal UI crate the comparison page names (docs.rs/ratatui).
+ratatui = "ratatui"
 
 [default.extend-identifiers]
 # The orbit example's data source, celestrak.org: a name, spelled so.
