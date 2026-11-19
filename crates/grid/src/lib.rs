@@ -9,6 +9,9 @@
 //!                                                       → Rebuild (background) → Projection
 //! ```
 
+// docs.rs (`--cfg docsrs`, nightly) marks each item of an optional feature.
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 // GPUI's `Action` derive spells its paths `gpui::`; the facade resolves them
 // through this alias (gpui-kit's `crates/kit/src/lib.rs`).
 extern crate gpui_kit as gpui;

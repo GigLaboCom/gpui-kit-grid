@@ -2,7 +2,7 @@
 
 A live GPUI data grid, for applications built with [gpui-kit](https://gpui-kit.com): a real-time table of hundreds of thousands of rows that takes thousands of updates per second from any thread, with change highlight and with sorting, filtering, grouping and trees in the background.
 
-[![The quotes example: simulated stock quotes grouped by sector, each changed cell flashing green or red with an arrow, and live totals on the sector rows](.github/assets/quotes.gif)](https://gkg.giglabo.com/demo/quotes/)
+[![The quotes example: simulated stock quotes grouped by sector, each changed cell flashing green or red with an arrow, and live totals on the sector rows](https://raw.githubusercontent.com/GigLaboCom/gpui-kit-grid/main/.github/assets/quotes.gif)](https://gkg.giglabo.com/demo/quotes/)
 
 The quotes example: every change highlighted as it arrives, live totals per sector. [Run it in the browser](https://gkg.giglabo.com/demo/quotes/), where the examples are compiled to WebAssembly and drawn with WebGPU: the [WebGPU demo](https://gkg.giglabo.com/webgpu-demo/) page says how, and the [trade blotter](https://gkg.giglabo.com/trade-blotter/) page has one to fill.
 
@@ -10,7 +10,7 @@ It is a separate crate on top of gpui-kit. Rows are addressed by key and written
 
 **Documentation: https://gkg.giglabo.com/** · [Getting started](https://gkg.giglabo.com/start/) · [Examples](https://gkg.giglabo.com/examples/) · [Live demos](https://gkg.giglabo.com/demo/) · [API](https://gkg.giglabo.com/api/)
 
-> **Status:** stages 1–3 are done: the live core, grouping, aggregates and trees, then editing, elements in cells, export and drag and drop. The API will still change. What may come next is in [ROADMAP.md](ROADMAP.md).
+> **Status:** stages 1–3 are done: the live core, grouping, aggregates and trees, then editing, elements in cells, export and drag and drop. The API will still change. What may come next is in [ROADMAP.md](https://gkg.giglabo.com/roadmap/).
 
 ## Why a new grid when gpui-kit has DataTable
 
@@ -118,7 +118,7 @@ std::thread::spawn(move || {
 });
 ```
 
-The window shows `LiveGrid::new(&grid)`, and the application calls `gpui_kit_grid::init(cx)` after `gpui_kit::init(cx)` for the grid's keys. The whole program is [`crates/grid/examples/quickstart.rs`](crates/grid/examples/quickstart.rs); [Getting started](https://gkg.giglabo.com/start/) walks through it, with installation.
+The window shows `LiveGrid::new(&grid)`, and the application calls `gpui_kit_grid::init(cx)` after `gpui_kit::init(cx)` for the grid's keys. The whole program is [`crates/grid/examples/quickstart.rs`](https://github.com/GigLaboCom/gpui-kit-grid/blob/main/crates/grid/examples/quickstart.rs); [Getting started](https://gkg.giglabo.com/start/) walks through it, with installation.
 
 ## Examples
 
@@ -148,11 +148,11 @@ Run one with `cargo run --release -p gpui-kit-grid --example <name>` (`spike_ben
 - Guides: [grouping](https://gkg.giglabo.com/guides/grouping/), [tree](https://gkg.giglabo.com/guides/tree/), [live changes](https://gkg.giglabo.com/guides/live-changes/), [cells](https://gkg.giglabo.com/guides/cells/), [editing](https://gkg.giglabo.com/guides/editing/), [export](https://gkg.giglabo.com/guides/export/), [drag and drop](https://gkg.giglabo.com/guides/drag-and-drop/), [columns](https://gkg.giglabo.com/guides/columns/), [keyboard](https://gkg.giglabo.com/guides/keyboard/), [settings](https://gkg.giglabo.com/guides/settings/).
 - [Cookbook](https://gkg.giglabo.com/cookbook/), [Performance](https://gkg.giglabo.com/performance/), [Web](https://gkg.giglabo.com/web/), [Embedding](https://gkg.giglabo.com/embedding/).
 
-The site is built from `site/` (Astro Starlight): `bun install --cwd site --frozen-lockfile`, then `bun run --cwd site build` and `bun test --cwd site`. Code on its pages comes from `// #region` blocks of compiled files, and `bun test` checks that this README's snippets match them. The site also ships as a container image, `ghcr.io/giglabocom/gpui-kit-grid-site` (nginx, `docker/site/`), released on its own tags; see "Releases" in [CONTRIBUTING.md](CONTRIBUTING.md).
+The site is built from `site/` (Astro Starlight): `bun install --cwd site --frozen-lockfile`, then `bun run --cwd site build` and `bun test --cwd site`. Code on its pages comes from `// #region` blocks of compiled files, and `bun test` checks that this README's snippets match them. The site also ships as a container image, `ghcr.io/giglabocom/gpui-kit-grid-site` (nginx, `docker/site/`), released on its own tags; see "Releases" in [CONTRIBUTING.md](https://github.com/GigLaboCom/gpui-kit-grid/blob/main/CONTRIBUTING.md).
 
 ## Development
 
-Requires Rust 1.98 (`rust-toolchain.toml`). gpui-kit comes from crates.io, on one minor release (`Cargo.lock` holds the exact one); to build against a local gpui-kit checkout instead, see "A local gpui-kit checkout" in [CONTRIBUTING.md](CONTRIBUTING.md).
+Requires Rust 1.98 (`rust-toolchain.toml`). gpui-kit comes from crates.io, on one minor release (`Cargo.lock` holds the exact one); to build against a local gpui-kit checkout instead, see "A local gpui-kit checkout" in [CONTRIBUTING.md](https://github.com/GigLaboCom/gpui-kit-grid/blob/main/CONTRIBUTING.md).
 
 | Path | Contents |
 |---|---|
@@ -172,7 +172,7 @@ RUSTC_BOOTSTRAP=1 cargo check -p gpui-kit-grid --lib --target wasm32-unknown-unk
 typos && cargo machete && bun script/check-gpui-kit-pin.ts
 ```
 
-Linux in Docker: `docker/linux/test.sh`, `docker/linux/smoke.sh` and `docker/linux/e2e.sh`. Rules: [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md).
+Linux in Docker: `docker/linux/test.sh`, `docker/linux/smoke.sh` and `docker/linux/e2e.sh`. Rules: [CONTRIBUTING.md](https://github.com/GigLaboCom/gpui-kit-grid/blob/main/CONTRIBUTING.md) and [AGENTS.md](https://github.com/GigLaboCom/gpui-kit-grid/blob/main/AGENTS.md).
 
 ## Data in the examples
 
@@ -197,7 +197,7 @@ If the grid is useful to you, consider [sponsoring its development](https://gkg.
 
 ## License
 
-Software source and examples: [Apache-2.0](LICENSE-APACHE), as in gpui-kit.
+Software source and examples: [Apache-2.0](https://github.com/GigLaboCom/gpui-kit-grid/blob/main/LICENSE-APACHE), as in gpui-kit.
 
 - Built on [gpui-kit](https://github.com/longbridge/gpui-kit) by Longbridge, also Apache-2.0. gpui-kit in turn is built on GPUI, the UI framework from Zed Industries, also Apache-2.0.
 - Contribution rules, gates and agent guidance (`AGENTS.md`, `CONTRIBUTING.md`, `.agents/`) are adapted from gpui-kit and extended.

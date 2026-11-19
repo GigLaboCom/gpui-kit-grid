@@ -6,10 +6,12 @@ keywords = ["gpui", "grid", "derive"]
 categories = ["gui", "development-tools::procedural-macro-helpers"]
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+# On crates.io with `gpui-kit-grid`, always on the same version.
+publish = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
+include = ["/src/**", "/LICENSE-APACHE"]
 
 [lib]
 proc-macro = true

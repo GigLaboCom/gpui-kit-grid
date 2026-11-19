@@ -6,11 +6,16 @@ keywords = ["gpui", "datagrid", "data-grid", "table", "real-time"]
 categories = ["gui", "visualization", "wasm"]
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+# On crates.io with `gpui-kit-grid-macros`; the other crates are not.
+publish = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 readme.workspace = true
+# What crates.io gets: the library, its translations and the layout fixtures
+# its unit tests read (`persist.rs`). The examples and the integration tests
+# stay in the repository: they need crates that are not published.
+include = ["/src/**", "/locales/**", "/tests/fixtures/**", "/LICENSE-APACHE"]
 
 [features]
 # Headless UI test harness and headless Metal rendering for the spike benchmark.
@@ -66,6 +71,12 @@ sysinfo = { version = "0.38", default-features = false, features = ["system", "u
 # macOS (`examples/perf/task.rs`).
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 libc = "0.2"
+
+# docs.rs documents the optional features too, each item marked with the
+# feature it needs (`doc_cfg`, `lib.rs`).
+[package.metadata.docs.rs]
+features = ["decimal", "derive"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lints]
 workspace = true
