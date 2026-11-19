@@ -6,6 +6,7 @@ import embed from './integrations/embed.mjs';
 import { satteri } from '@astrojs/markdown-satteri';
 import markdownRegions from './src/lib/markdown-regions.ts';
 import { consentHead } from './src/lib/consent.ts';
+import { SIDEBAR } from './src/lib/sidebar.ts';
 
 // The repository's root: code on the pages comes from regions of its
 // compiled files, and the roadmap page from its `ROADMAP.md`.
@@ -51,47 +52,7 @@ export default defineConfig({
         ThemeSelect: './src/components/ThemeSelect.astro',
       },
       routeMiddleware: './src/routeData.ts',
-      sidebar: [
-        { slug: 'start', label: 'Start' },
-        // Kept near the top so the other products are seen (src/data/products.ts).
-        { slug: 'products', label: 'More from GigLabo', badge: { text: 'Products', variant: 'tip' } },
-        {
-          label: 'Concepts',
-          items: [
-            { slug: 'concepts', label: 'Overview' },
-            'concepts/replaceable-behaviors',
-          ],
-        },
-        {
-          label: 'Guides',
-          items: [
-            'guides/grouping',
-            'guides/tree',
-            'guides/live-changes',
-            'guides/cells',
-            'guides/editing',
-            'guides/export',
-            'guides/drag-and-drop',
-            'guides/columns',
-            'guides/keyboard',
-            'guides/settings',
-          ],
-        },
-        'cookbook',
-        'examples',
-        // Pages about one demo each, by what a reader may be looking for.
-        { label: 'Live demos', items: ['webgpu-demo', 'trade-blotter'] },
-        'performance',
-        { slug: 'web', label: 'Web' },
-        'play',
-        'embedding',
-        // rustdoc, which the site's CI build writes into `api/`.
-        { label: 'API', link: '/api/' },
-        // The released crates, and their API as docs.rs builds it.
-        { label: 'crates.io', link: 'https://crates.io/crates/gpui-kit-grid' },
-        'roadmap',
-        'sponsor',
-      ],
+      sidebar: SIDEBAR,
     }),
     // `<live-grid>` under `/embed/v1/`, from the examples' `www/embed/`.
     embed(),

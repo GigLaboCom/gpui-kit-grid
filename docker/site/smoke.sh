@@ -71,6 +71,8 @@ echo "smoke.sh: $image at $base"
 expect "/healthz" "$(curl -fsS "$base/healthz" || true)" "ok"
 expect "/ status" "$(status /)" 200
 expect "/ type" "$(header / Content-Type)" "text/html*"
+# The map for language models (site/src/pages/llms.txt.ts): UTF-8 text.
+expect "/llms.txt type" "$(header /llms.txt Content-Type)" "text/plain; charset=utf-8"
 
 # A directory page without its slash: a relative redirect to it.
 page="$(cd "$dist" && find . -mindepth 2 -maxdepth 2 -name index.html | sort | head -1 | sed 's|^\./||; s|/index\.html$||')"
