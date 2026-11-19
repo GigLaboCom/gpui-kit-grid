@@ -159,22 +159,22 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
-      # gpui-pre 0.3.8 always enables gpui_web's `multithreaded` feature, whose
-      # `wasm_thread` dependency needs a nightly feature gate even in a
-      # single-threaded build; nothing here uses a nightly feature otherwise
-      # (as `crates/grid-web/scripts/build-wasm.sh`).
+      # gpui-kit (0.10) depends on gpui_web with its default `multithreaded`
+      # feature, whose `wasm_thread` dependency needs a nightly feature gate
+      # even in a single-threaded build; nothing here uses a nightly feature
+      # otherwise (as `crates/grid-web/scripts/build-wasm.sh`).
       RUSTC_BOOTSTRAP: 1
     steps:
       - uses: actions/checkout@v4
       # The web shell bundles a few gpui-kit icons from `../gpui-kit`
-      # (`crates/grid-web/shell/src/icons.rs`), read at the revision
-      # `Cargo.toml` pins; cargo itself fetches that revision from git.
+      # (`crates/grid-web/shell/src/icons.rs`), read at the tag of the
+      # release `Cargo.lock` holds; cargo itself takes it from crates.io.
       - name: gpui-kit checkout for the web examples' icons
         run: |
-          rev=$(sed -n 's/^gpui-kit = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)
-          test -n "$rev"
+          version=$(sed -n '/^name = "gpui-kit"$/{n;s/^version = "\(.*\)"$/\1/p;}' Cargo.lock)
+          test -n "$version"
           git init -q ../gpui-kit
-          git -C ../gpui-kit fetch -q --depth 1 https://github.com/longbridge/gpui-kit "$rev"
+          git -C ../gpui-kit fetch -q --depth 1 https://github.com/longbridge/gpui-kit "refs/tags/v$version"
           git -C ../gpui-kit checkout -q FETCH_HEAD
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -262,8 +262,7 @@ jobs:
   # crates' version, and the install snippets on the site the tag; the
   # history carries no secret; the GitHub release opens with what to put in
   # Cargo.toml and the changes since the previous `vX.Y.Z`, and is the
-  # repository's latest (site releases never are). Not on crates.io: the
-  # crate depends on gpui-kit by git revision, which crates.io refuses.
+  # repository's latest (site releases never are). Not on crates.io yet.
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
@@ -316,14 +315,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          rev="$(sed -n 's/^gpui-kit = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)"
-          test -n "$rev"
+          kit="$(sed -n 's/^gpui-kit = "\([^"]*\)"$/\1/p' Cargo.toml)"
+          test -n "$kit"
           {
-            echo 'Add it from git, with gpui-kit at the revision it is built against (the crate is not on crates.io yet):'
+            echo 'Add it from git, with the gpui-kit release it is built against (the crate is not on crates.io yet):'
             echo
             echo '```toml'
             echo '[dependencies]'
-            echo "gpui-kit = { git = \"https://github.com/longbridge/gpui-kit\", rev = \"$rev\" }"
+            echo "gpui-kit = \"$kit\""
             echo "gpui-kit-grid = { git = \"https://github.com/$GITHUB_REPOSITORY\", tag = \"$TAG\" }"
             echo '```'
             echo

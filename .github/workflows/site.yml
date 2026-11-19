@@ -70,9 +70,9 @@ permissions:
   contents: read
 
 env:
-  # Cargo fetches gpui-kit at the revision `Cargo.toml` pins; the web shell
-  # also bundles a few of its icons from a checkout of that revision beside
-  # this repository (`../gpui-kit`, `crates/grid-web/shell/src/icons.rs`).
+  # Cargo takes gpui-kit from crates.io; the web shell also bundles a few of
+  # its icons from a checkout of that release's tag beside this repository
+  # (`../gpui-kit`, `crates/grid-web/shell/src/icons.rs`).
   GPUI_KIT_REPOSITORY: longbridge/gpui-kit
   # The release holding the demos' recordings (see the top of this file).
   RECORDINGS_RELEASE: site-recordings-1
@@ -92,7 +92,8 @@ jobs:
         working-directory: gpui-kit-grid
     steps:
       # This repository and gpui-kit side by side, as the web shell's icons
-      # expect (`../gpui-kit`), gpui-kit at the revision `Cargo.toml` pins.
+      # expect (`../gpui-kit`), gpui-kit at the tag of the release
+      # `Cargo.lock` holds.
       - uses: actions/checkout@v4
         with:
           path: gpui-kit-grid
@@ -133,18 +134,18 @@ jobs:
             gpui-kit-grid/crates/grid-web/www/fonts
             gpui-kit-grid/target/doc
           key: site-demos-${{ steps.recordings.outputs.key }}-${{ env.BINARYEN_VERSION }}-${{ hashFiles('gpui-kit-grid/crates/**', 'gpui-kit-grid/Cargo.lock', 'gpui-kit-grid/Cargo.toml', 'gpui-kit-grid/rust-toolchain.toml', 'gpui-kit-grid/script/fetch-example-fonts', 'gpui-kit-grid/script/fetch-transit-data', 'gpui-kit-grid/script/site-recordings.sha256') }}
-      - name: The pinned gpui-kit revision
+      - name: The gpui-kit release Cargo.lock holds
         if: steps.demos.outputs.cache-hit != 'true'
         id: gpui-kit
         run: |
-          rev=$(sed -n 's/^gpui-kit = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)
-          test -n "$rev"
-          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+          version=$(sed -n '/^name = "gpui-kit"$/{n;s/^version = "\(.*\)"$/\1/p;}' Cargo.lock)
+          test -n "$version"
+          echo "ref=v$version" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         if: steps.demos.outputs.cache-hit != 'true'
         with:
           repository: ${{ env.GPUI_KIT_REPOSITORY }}
-          ref: ${{ steps.gpui-kit.outputs.rev }}
+          ref: ${{ steps.gpui-kit.outputs.ref }}
           path: gpui-kit
 
       # Rust from `rust-toolchain.toml`, with the browser's target. Only
