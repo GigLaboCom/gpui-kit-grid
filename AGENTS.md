@@ -235,6 +235,11 @@ BLOTTER_SECONDS=10 ROWS=100000 RATE=10000 cargo run --release -p gpui-kit-grid -
 # GPUI only through a pinned gpui-kit
 bun script/check-gpui-kit-pin.ts
 
+# What crates.io gets: the packages' files and versions, then both crates
+# built from their packages (publishing nothing)
+bun script/check-package.ts
+cargo publish --dry-run -p gpui-kit-grid-macros -p gpui-kit-grid
+
 # Tests, including headless UI tests; again with `decimal`
 cargo test --workspace --features gpui-kit-grid/test-support
 cargo test --workspace --features gpui-kit-grid/test-support,gpui-kit-grid/decimal

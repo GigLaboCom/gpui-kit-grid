@@ -9,8 +9,6 @@ members = [
 resolver = "2"
 
 [workspace.package]
-# Not on crates.io yet.
-publish = false
 edition = "2024"
 # The `rust-toolchain.toml` channel.
 rust-version = "1.98"
@@ -33,7 +31,9 @@ readme = "README.md"
 gpui-kit = "0.10"
 gpui-kit-grid = { path = "crates/grid" }
 gpui-kit-grid-feed = { path = "crates/grid-feed" }
-gpui-kit-grid-macros = { path = "crates/grid-macros" }
+# Exact: the grid and its derive ship together, on one version (as serde and
+# serde_derive).
+gpui-kit-grid-macros = { path = "crates/grid-macros", version = "=1.0.0" }
 # The examples' "More from GigLabo" button and dialog.
 giglabo-products = { path = "crates/products" }
 

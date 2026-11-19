@@ -111,9 +111,11 @@ before a pull request:
 | GPUI only through a pinned gpui-kit | `bun script/check-gpui-kit-pin.ts`, and again with `crates/grid-web/Cargo.toml` | Linux |
 | Format | `cargo fmt --all --check`, and in `crates/grid-web` | Linux |
 | Unused dependencies | `cargo machete` | Linux |
+| What crates.io gets: the packages' files and versions | `bun script/check-package.ts` | Linux |
 | Clippy, warnings denied, all targets | `cargo clippy --workspace --all-targets --features gpui-kit-grid/test-support -- --deny warnings`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | Linux |
 | The library without features | `cargo check -p gpui-kit-grid` | Linux |
 | Docs, warnings denied | `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --features gpui-kit-grid/decimal,gpui-kit-grid/derive` | Linux |
+| The crates built from their packages | `cargo publish --dry-run -p gpui-kit-grid-macros -p gpui-kit-grid` | Linux |
 | Tests (unit, property, headless UI) | `cargo test --workspace --features gpui-kit-grid/test-support`, and again with `gpui-kit-grid/decimal` and with `gpui-kit-grid/derive` added | macOS, Linux, Windows (the `decimal` and `derive` runs on Linux) |
 | Doc tests | `cargo test --workspace --features gpui-kit-grid/test-support --doc` | Linux |
 | The library for the browser | `RUSTC_BOOTSTRAP=1 cargo check -p gpui-kit-grid --lib --target wasm32-unknown-unknown --features decimal,derive` | Linux |
@@ -191,7 +193,7 @@ Changes pile up on `main` through pull requests; a tag cuts a release.
 
 | | Tags | What a tag does |
 |---|---|---|
-| The library | `vX.Y.Z` | CI runs on the tag; once every job passes, its Release job checks that the tag names the crates' version and that the site's install snippets name the tag, scans the history for secrets and opens the GitHub release (the repository's latest) with the `Cargo.toml` lines to use. Not on crates.io yet: the crate depends on gpui-kit by git revision. |
+| The library | `vX.Y.Z` | CI runs on the tag; once every job passes, its Release job checks that the tag names the crates' version and that the site's install snippets name the tag, scans the history for secrets, publishes `gpui-kit-grid-macros` and `gpui-kit-grid` on crates.io (see [crates.io](#cratesio)) and opens the GitHub release (the repository's latest) with the `Cargo.toml` lines to use. |
 | The site | `site-vX.Y.Z` | `.github/workflows/site.yml` scans the history for secrets, publishes the image `ghcr.io/giglabocom/gpui-kit-grid-site` (`X.Y.Z`, `X.Y`, `X` from 1.0, `latest`; amd64 and arm64) and opens a GitHub release with the site's commits since its last tag. The host behind https://gkg.giglabo.com runs that image and moves to the new version itself. |
 
 ### The library
@@ -214,6 +216,34 @@ which ships with them) share one version.
 
 A wrong tag fails the Release job before anything is published; delete it
 (`git push origin :refs/tags/v1.0.0`), fix, and tag again.
+
+#### crates.io
+
+`gpui-kit-grid-macros` and `gpui-kit-grid` are published, on one version;
+`gpui-kit-grid-feed`, the gateway, `giglabo-products` and the web examples
+are not (`publish = false`). A package holds the library, its translations,
+the fixtures its unit tests read, the README and the licence (`include`);
+the examples and the integration tests stay in the repository. Every pull
+request checks the files and versions (`bun script/check-package.ts`) and
+builds both crates from their packages (`cargo publish --dry-run`).
+
+The Release job publishes through crates.io's Trusted Publishing: each
+crate's settings on crates.io name the repository `GigLaboCom/gpui-kit-grid`
+and the workflow `ci.yml`, with no environment, so no token is stored. It
+skips a version crates.io has, and from the second release on it checks
+the grid's API against its last version first (`cargo semver-checks`).
+
+crates.io takes a Trusted Publisher only for a crate it has, so the first
+version of each crate goes up by hand, from the commit the tag will name and
+before the tag, with a token of the `publish-new` scope (deleted after):
+
+```bash
+cargo publish -p gpui-kit-grid-macros -p gpui-kit-grid
+```
+
+Then set the Trusted Publisher on both crates and push the tag; the Release
+job finds both versions on crates.io and opens the GitHub release. A
+published version cannot be deleted, only yanked (`cargo yank`).
 
 ### The site
 
