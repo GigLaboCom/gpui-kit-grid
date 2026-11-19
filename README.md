@@ -16,18 +16,18 @@ It is a separate crate on top of gpui-kit. Rows are addressed by key and written
 
 ## Why a new grid when gpui-kit has DataTable
 
-`DataTable` builds an element for each cell, addresses rows by index and calls its delegate through `&mut` on the UI thread. That is enough for static tables, not for live data: with 1500 visible cells under 2k updates a second a frame takes 12–14 ms, and after a re-sort the selection points at a different row.
+`DataTable` builds an element for each visible cell, addresses rows by index and calls its delegate through `&mut` on the UI thread. That is enough for static tables, not for live data: with 1500 visible cells under 2k updates a second a frame takes 12–14 ms, and after a re-sort the selection points at a different row.
 
 |  | `DataTable` | `gpui-kit-grid` |
 |---|---|---|
-| Painting | An element per cell | One custom element, glyphs painted directly |
+| Painting | An element per visible cell | One custom element, glyphs painted directly |
 | Frame, 1500 cells, 2k updates/s | 12–14 ms | ~1.1 ms |
 | Rows and selection | By index | By key: survive re-sorting and removal |
 | Data | `&mut` delegate on the UI thread | `GridWriter` from any thread, background ingest |
-| Sorting and filtering | Synchronous, on click | In the background, automatic when data changes |
+| Sorting and filtering | The delegate sorts on a click, on the UI thread; no filtering | In the background, automatic when data changes |
 | Change highlight | No | Yes, with direction arrows and fading removed rows |
 | Structure | Flat rows | Grouping, aggregates, totals and trees, built in the background |
-| Editing and export | No | Editors under live updates; copy as TSV, CSV and custom formats in the background |
+| Editing and export | No editing; cells as text (`dump`), written out by the application | Editors under live updates; copy as TSV, CSV and custom formats in the background |
 
 Measured with the headless `spike_bench` example (release, macOS); the [Performance](https://gkg.giglabo.com/performance/) page has every scenario.
 
