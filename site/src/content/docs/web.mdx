@@ -29,11 +29,11 @@ The grid builds for `wasm32-unknown-unknown` and runs on that platform single-th
 ## What changes in the browser
 
 - **One thread.** The page has no background threads, so the jobs that run on the background executor natively (rebuilds of the view, aggregates, exports) run on the main thread, between frames. A rebuild stays within a frame up to about 10k rows that change order on every update, and drops frames at 50k. Simulators and live sources run on the executor's timer instead of a thread.
-- **Download size.** Each example's module carries GPUI, gpui-kit and the grid: 18–22 MB, 6.4–7.1 MB gzip. Browsers share no code between modules, so each demo is its own download.
+- **Download size.** Each example's module carries GPUI, gpui-kit and the grid: 19–23 MB, 6.8–7.6 MB gzip. Browsers share no code between modules, so each demo is its own download.
 - **Fonts.** The browser has no system fonts for GPUI: a page fetches the faces its theme uses, and IBM Plex Sans for GPUI's default family.
 - **Clipboard.** A browser offers its clipboard API only in a secure context: https, `localhost` or `127.0.0.1`. Served over plain http on another address, a page puts a stand-in in its place: copying works inside the page, and pasting from the system clipboard does not. Serve over https, or from `localhost`, for the full clipboard.
 - **Files.** `export` writes to a `Vec<u8>`; there is no `export_to_path`.
-- **Keys.** The `secondary` modifier is Ctrl in the browser. A browser on macOS reports Option with a letter as a character (Option-B arrives as `∫`), so an application that binds Option keys binds those characters as well.
+- **Keys.** The `secondary` modifier follows the host, as natively: Cmd in a browser on macOS, Ctrl elsewhere. The examples bind their own shortcuts with Ctrl in the browser, since Cmd with a digit, N or Shift+R belongs to the browser there. A browser on macOS reports Option with a letter as a character (Option-B arrives as `∫`), so an application that binds Option keys binds those characters as well.
 - **Text.** GPUI's glyph fallback in the browser covers emoji and CJK only: Arabic, Hebrew, Indic and Thai text shows as placeholders.
 - **The clock.** The grid reads only its store's clock, never `std::time::Instant::now()`, which panics on wasm.
 
@@ -51,7 +51,7 @@ make -C crates/grid-web build      # release build of every example; APP=desk fo
 make -C crates/grid-web serve      # http://127.0.0.1:8080; PORT=8091 for another port
 ```
 
-GPUI's web platform needs one nightly feature gate even single-threaded, so the build script sets `RUSTC_BOOTSTRAP=1` itself; `wasm-opt` runs when it is installed. The pages use relative paths only, so they work under any prefix.
+gpui-kit takes GPUI's web platform with its `multithreaded` feature, which needs one nightly feature gate even single-threaded, so the build script sets `RUSTC_BOOTSTRAP=1` itself; `wasm-opt` runs when it is installed. The pages use relative paths only, so they work under any prefix.
 
 A release build of every example takes about 160 s from scratch; a change to one example rebuilds only its own module, in under 40 s.
 

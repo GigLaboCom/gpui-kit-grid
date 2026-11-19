@@ -121,11 +121,11 @@ if [[ -n "${RUSTFLAGS:-}" ]]; then
 else
     export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="${REMAP[*]}"
 fi
-# gpui-pre 0.3.8 always enables gpui_web's `multithreaded` feature, and its
-# `wasm_thread` dependency needs a nightly feature gate even in this
-# single-threaded build (fixed upstream after 0.3.8 by zed#65289).
-# RUSTC_BOOTSTRAP lets the repository's pinned stable toolchain build it;
-# nothing here uses a nightly feature otherwise.
+# gpui-kit (0.10) depends on gpui_web with its default `multithreaded`
+# feature, whose `wasm_thread` dependency needs a nightly feature gate even
+# in this single-threaded build (GPUI itself leaves the feature off since
+# zed#65289). RUSTC_BOOTSTRAP lets the repository's pinned stable toolchain
+# build it; nothing here uses a nightly feature otherwise.
 RUSTC_BOOTSTRAP=1 cargo build --target wasm32-unknown-unknown \
     ${CARGO_FLAGS[@]+"${CARGO_FLAGS[@]}"} "${PACKAGES[@]}"
 

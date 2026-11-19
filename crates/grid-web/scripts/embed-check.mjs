@@ -1,7 +1,7 @@
 // `<live-grid>` on another site's page, in headless Chrome: what to run on
 // every gpui-kit or GPUI upgrade. Inline mode moves the canvas GPUI's web
 // platform appends to the body into the element, and holds the focus GPUI
-// takes when its window opens (gpui-pre 0.3.8), so an upgrade that places
+// takes when its window opens (gpui-pre 0.3.8 to 0.3.12), so an upgrade that places
 // the canvas or the focus elsewhere breaks it quietly.
 //
 // This checkout's www/ is the "CDN" (on 127.0.0.1, or ORIGIN); the host

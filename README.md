@@ -152,7 +152,7 @@ The site is built from `site/` (Astro Starlight): `bun install --cwd site --froz
 
 ## Development
 
-Requires Rust 1.95 (`rust-toolchain.toml`). gpui-kit comes from GitHub, pinned to one revision of its `next` branch; to build against a local gpui-kit checkout instead, see "A local gpui-kit checkout" in [CONTRIBUTING.md](CONTRIBUTING.md).
+Requires Rust 1.95 (`rust-toolchain.toml`). gpui-kit comes from crates.io, on one minor release (`Cargo.lock` holds the exact one); to build against a local gpui-kit checkout instead, see "A local gpui-kit checkout" in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Path | Contents |
 |---|---|
