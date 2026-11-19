@@ -14,12 +14,13 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 
 // The site lives at the root of its own host, `gkg.giglabo.com`.
 const site = 'https://gkg.giglabo.com';
+// The root of the domain; `SITE_BASE=/path` serves the site under a path
+// instead, for a preview on another host.
+const base = process.env.SITE_BASE || '/';
 
 export default defineConfig({
   site,
-  // The root of the domain; `SITE_BASE=/path` serves the site under a path
-  // instead, for a preview on another host.
-  base: process.env.SITE_BASE || '/',
+  base,
   trailingSlash: 'always',
   markdown: {
     // Astro's own Markdown processor, with the regions plugin in front of
@@ -36,9 +37,26 @@ export default defineConfig({
         dark: './src/assets/mark-dark.svg',
       },
       favicon: '/favicon.svg',
-      // Google Consent Mode v2 defaults (all denied) and the GTM container,
-      // only on gkg.giglabo.com: src/lib/consent.ts; the banner is in Footer.
-      head: [{ tag: 'script', content: consentHead() }],
+      head: [
+        // Google Consent Mode v2 defaults (all denied) and the GTM container,
+        // only on gkg.giglabo.com: src/lib/consent.ts; the banner is in Footer.
+        { tag: 'script', content: consentHead() },
+        // A shared link shows the quotes poster under the crate's name, as
+        // the repository's social preview does. A page with a picture of its
+        // own sets `og:image` in its frontmatter, which wins.
+        {
+          tag: 'meta',
+          attrs: { property: 'og:image', content: new URL(`${base.replace(/\/$/, '')}/social-preview.png`, site).href },
+        },
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:image:alt',
+            content:
+              'gpui-kit-grid, a live data grid for Rust applications built with GPUI, over simulated quotes grouped by sector with changed cells in green and red',
+          },
+        },
+      ],
       social: [{ icon: 'github', label: 'Repository', href: 'https://github.com/GigLaboCom/gpui-kit-grid' }],
       customCss: [
         '@fontsource/ibm-plex-sans/latin-400.css',
