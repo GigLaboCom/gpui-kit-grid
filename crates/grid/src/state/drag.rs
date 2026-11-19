@@ -423,6 +423,7 @@ impl<D: LiveGridDelegate> LiveGridState<D> {
             column,
             was_selected,
             modifiers,
+            self.platform,
             self.selection.mode(),
             click_count,
         ))

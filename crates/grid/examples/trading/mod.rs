@@ -22,6 +22,7 @@
 //!   positions, headlines and price bars. A feed left out costs nothing;
 //! - `rows`: the rows and columns the simulator writes;
 //! - `bus`: the current instrument, shared by an example's panels;
+//! - `keys`: key tables with `secondary-`, Cmd or Ctrl by the host;
 //! - `chart`: a candlestick chart panel with VWAP, an optional EMA and
 //!   volume, over any source of price bars (`ChartSource`);
 //! - `theme` and `fonts`: an example's own gpui-kit theme files
@@ -77,6 +78,7 @@ pub mod bus;
 pub mod chart;
 pub mod fonts;
 pub mod instruments;
+pub mod keys;
 pub mod market;
 pub mod paint;
 pub mod rows;

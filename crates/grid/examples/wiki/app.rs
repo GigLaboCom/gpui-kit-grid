@@ -27,8 +27,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     App, AppContext as _, Context, Entity, FocusHandle, Focusable, FontWeight,
-    InteractiveElement as _, IntoElement, KeyBinding, Keystroke, ParentElement as _, Render,
-    SharedString, Styled as _, Subscription, Task, Window, div, prelude::FluentBuilder as _, px,
+    InteractiveElement as _, IntoElement, KeyBinding, ParentElement as _, Render, SharedString,
+    Styled as _, Subscription, Task, Window, div, prelude::FluentBuilder as _, px,
 };
 use gpui_kit_grid::{
     Clock, GridStore, LiveGrid, LiveGridEvent, LiveGridState, PinnedEdge, SelectionMode,
@@ -65,7 +65,7 @@ use self::{
     table::{Arrangement, WikiTable},
     ui::{GAP, PAGE_PADDING, ROW_HEIGHT, thousands},
 };
-use crate::trading::{theme::TradingTheme as _, worker};
+use crate::trading::{keys, theme::TradingTheme as _, worker};
 
 gpui_kit::actions!(
     wiki,
@@ -109,14 +109,14 @@ enum Command {
 }
 
 impl Command {
-    fn binding(self, keystrokes: &str) -> KeyBinding {
+    fn binding(self, keystrokes: &str, cx: &App) -> KeyBinding {
         let table = Some(TABLE_KEYS);
         match self {
-            Self::Live => KeyBinding::new(keystrokes, ToggleLive, table),
-            Self::Replay => KeyBinding::new(keystrokes, ToggleReplay, table),
-            Self::Grouping => KeyBinding::new(keystrokes, ToggleGrouping, table),
-            Self::Open => KeyBinding::new(keystrokes, OpenPage, table),
-            Self::Search => KeyBinding::new(keystrokes, FocusSearch, Some(KEY_CONTEXT)),
+            Self::Live => keys::bind(keystrokes, ToggleLive, table, cx),
+            Self::Replay => keys::bind(keystrokes, ToggleReplay, table, cx),
+            Self::Grouping => keys::bind(keystrokes, ToggleGrouping, table, cx),
+            Self::Open => keys::bind(keystrokes, OpenPage, table, cx),
+            Self::Search => keys::bind(keystrokes, FocusSearch, Some(KEY_CONTEXT), cx),
         }
     }
 
@@ -131,9 +131,9 @@ impl Command {
     }
 }
 
-fn key_bindings() -> Vec<KeyBinding> {
+fn key_bindings(cx: &App) -> Vec<KeyBinding> {
     KEYS.iter()
-        .map(|(keystrokes, command)| command.binding(keystrokes))
+        .map(|(keystrokes, command)| command.binding(keystrokes, cx))
         .collect()
 }
 
@@ -240,7 +240,7 @@ pub fn setup(cx: &mut App) {
 pub fn configure(cx: &mut App) {
     crate::trading::theme::install::<WikiTheme>(cx);
     WikiTheme::Folio.apply(cx);
-    cx.bind_keys(key_bindings());
+    cx.bind_keys(key_bindings(cx));
 }
 
 /// The wiki view in `window`, the keyboard in its table.
@@ -766,8 +766,9 @@ impl Wiki {
     /// The mark, the mode, the keys and "More from GigLabo".
     fn render_app_bar(&self, narrow: bool, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
+        let platform = cx.platform_info();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
-            let keystroke = Keystroke::parse(keystrokes).ok()?;
+            let keystroke = keys::keystroke(keystrokes, platform)?;
             Some(
                 h_flex()
                     .gap(px(5.))
@@ -1258,14 +1259,19 @@ impl Render for Wiki {
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{Keystroke, OperatingSystem};
+
     use super::*;
 
     #[test]
     fn test_keys_parse_and_name_each_command_once() {
-        let bindings = key_bindings();
-        assert_eq!(bindings.len(), KEYS.len());
         for (ix, (keystrokes, command)) in KEYS.iter().enumerate() {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS[ix + 1..]
                     .iter()

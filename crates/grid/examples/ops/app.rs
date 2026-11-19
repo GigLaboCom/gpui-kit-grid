@@ -25,8 +25,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     App, AppContext as _, Context, Entity, Focusable as _, FontWeight, InteractiveElement as _,
-    IntoElement, KeyBinding, Keystroke, ParentElement as _, Pixels, Render, SharedString,
-    Styled as _, Subscription, Task, Window, div, prelude::FluentBuilder as _, px,
+    IntoElement, KeyBinding, ParentElement as _, Pixels, Render, SharedString, Styled as _,
+    Subscription, Task, Window, div, prelude::FluentBuilder as _, px,
 };
 use gpui_kit_grid::{GridStore, LiveGrid, LiveGridEvent, LiveGridState};
 // `std::time` natively; the browser's clock in wasm, where
@@ -57,7 +57,7 @@ use self::{
     theme::status_color,
     ui::{GAP, PAGE_PADDING, ROW_HEIGHT},
 };
-use crate::trading::theme::TradingTheme as _;
+use crate::trading::{keys, theme::TradingTheme as _};
 
 gpui_kit::actions!(
     ops,
@@ -124,24 +124,27 @@ impl Command {
     /// The binding of `keystrokes` to this command's action: `A` in the
     /// alert grid (the grid's own `Confirm`, the acknowledge command), the
     /// rest anywhere in the window.
-    fn binding(self, keystrokes: &str) -> KeyBinding {
+    fn binding(self, keystrokes: &str, cx: &App) -> KeyBinding {
         let context = Some(KEY_CONTEXT);
         match self {
-            Self::ToggleStorm => KeyBinding::new(keystrokes, ToggleStorm, context),
-            Self::PauseOrder => KeyBinding::new(keystrokes, PauseOrder, context),
-            Self::Acknowledge => {
-                KeyBinding::new(keystrokes, Confirm { secondary: false }, Some(ACK_CONTEXT))
-            }
+            Self::ToggleStorm => keys::bind(keystrokes, ToggleStorm, context, cx),
+            Self::PauseOrder => keys::bind(keystrokes, PauseOrder, context, cx),
+            Self::Acknowledge => keys::bind(
+                keystrokes,
+                Confirm { secondary: false },
+                Some(ACK_CONTEXT),
+                cx,
+            ),
             Self::Severity(Severity::Critical) => {
-                KeyBinding::new(keystrokes, ToggleCritical, context)
+                keys::bind(keystrokes, ToggleCritical, context, cx)
             }
-            Self::Severity(Severity::Major) => KeyBinding::new(keystrokes, ToggleMajor, context),
-            Self::Severity(Severity::Minor) => KeyBinding::new(keystrokes, ToggleMinor, context),
-            Self::Severity(_) => KeyBinding::new(keystrokes, ToggleWarning, context),
-            Self::FocusSearch => KeyBinding::new(keystrokes, FocusSearch, context),
-            Self::SwitchGrouping => KeyBinding::new(keystrokes, SwitchGrouping, context),
-            Self::ExpandFleet => KeyBinding::new(keystrokes, ExpandFleet, context),
-            Self::CollapseFleet => KeyBinding::new(keystrokes, CollapseFleet, context),
+            Self::Severity(Severity::Major) => keys::bind(keystrokes, ToggleMajor, context, cx),
+            Self::Severity(Severity::Minor) => keys::bind(keystrokes, ToggleMinor, context, cx),
+            Self::Severity(_) => keys::bind(keystrokes, ToggleWarning, context, cx),
+            Self::FocusSearch => keys::bind(keystrokes, FocusSearch, context, cx),
+            Self::SwitchGrouping => keys::bind(keystrokes, SwitchGrouping, context, cx),
+            Self::ExpandFleet => keys::bind(keystrokes, ExpandFleet, context, cx),
+            Self::CollapseFleet => keys::bind(keystrokes, CollapseFleet, context, cx),
         }
     }
 
@@ -162,9 +165,9 @@ impl Command {
 }
 
 /// Every binding of `KEYS`.
-fn key_bindings() -> Vec<KeyBinding> {
+fn key_bindings(cx: &App) -> Vec<KeyBinding> {
     KEYS.iter()
-        .map(|(keystrokes, command)| command.binding(keystrokes))
+        .map(|(keystrokes, command)| command.binding(keystrokes, cx))
         .collect()
 }
 
@@ -677,9 +680,10 @@ impl Ops {
             Phase::Incident => status_color(Severity::Critical, theme),
             Phase::Recovering => status_color(Severity::Minor, theme),
         };
+        let platform = cx.platform_info();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
             let hint = command.hint()?;
-            let keystroke = Keystroke::parse(keystrokes).ok()?;
+            let keystroke = keys::keystroke(keystrokes, platform)?;
             Some(
                 h_flex()
                     .gap(px(5.))
@@ -828,7 +832,7 @@ pub fn setup(cx: &mut App) {
 fn configure(cx: &mut App) {
     crate::trading::theme::install::<OpsTheme>(cx);
     OpsTheme::Graphite.apply(cx);
-    cx.bind_keys(key_bindings());
+    cx.bind_keys(key_bindings(cx));
 }
 
 /// The console in `window`: the simulator started, the keyboard in the
@@ -883,14 +887,19 @@ impl Ops {
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{Keystroke, OperatingSystem};
+
     use super::*;
 
     #[test]
     fn test_keys_parse_and_name_each_command_once() {
-        let bindings = key_bindings();
-        assert_eq!(bindings.len(), KEYS.len());
         for (ix, (keystrokes, command)) in KEYS.iter().enumerate() {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS[ix + 1..]
                     .iter()

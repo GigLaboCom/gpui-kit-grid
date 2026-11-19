@@ -9,7 +9,7 @@
 
 use std::{ops::Range, sync::Arc, time::Duration};
 
-use gpui_kit::{App, AppContext as _, Modifiers, MouseButton, Pixels, Task, px};
+use gpui_kit::{App, AppContext as _, Modifiers, MouseButton, Pixels, PlatformInfo, Task, px};
 use web_time::Instant;
 
 use crate::{
@@ -1124,6 +1124,7 @@ pub enum SelectionEdit {
 pub struct SelectionGestureContext {
     input: GestureInput,
     modifiers: Modifiers,
+    platform: PlatformInfo,
     extending: bool,
     target_selected: bool,
     mode: SelectionMode,
@@ -1133,6 +1134,7 @@ impl SelectionGestureContext {
     pub(crate) fn new(
         input: GestureInput,
         modifiers: Modifiers,
+        platform: PlatformInfo,
         extending: bool,
         target_selected: bool,
         mode: SelectionMode,
@@ -1140,6 +1142,7 @@ impl SelectionGestureContext {
         Self {
             input,
             modifiers,
+            platform,
             extending,
             target_selected,
             mode,
@@ -1154,6 +1157,12 @@ impl SelectionGestureContext {
     /// The pointer's modifiers; none for keyboard input.
     pub fn modifiers(&self) -> Modifiers {
         self.modifiers
+    }
+
+    /// The host whose conventions apply, as `App::platform_info`: a browser
+    /// on macOS is a macOS host, so the secondary modifier is Cmd there.
+    pub fn platform_info(&self) -> PlatformInfo {
+        self.platform
     }
 
     /// Returns true for a keyboard `ExtendSelection…` command.
@@ -1199,7 +1208,10 @@ impl SelectionGesture for StandardSelectionGesture {
     fn edit(&self, context: &SelectionGestureContext) -> SelectionEdit {
         let modifiers = context.modifiers();
         match context.input() {
-            GestureInput::Pointer => match (modifiers.shift, modifiers.secondary()) {
+            GestureInput::Pointer => match (
+                modifiers.shift,
+                is_secondary_held(modifiers, context.platform_info()),
+            ) {
                 (true, true) => SelectionEdit::AddRange,
                 (true, false) => SelectionEdit::Extend,
                 (false, true) => SelectionEdit::Toggle,
@@ -1229,6 +1241,7 @@ pub enum GridArea {
 pub struct ContextMenuGestureContext {
     button: MouseButton,
     modifiers: Modifiers,
+    platform: PlatformInfo,
     click_count: usize,
     area: GridArea,
 }
@@ -1237,12 +1250,14 @@ impl ContextMenuGestureContext {
     pub(crate) fn new(
         button: MouseButton,
         modifiers: Modifiers,
+        platform: PlatformInfo,
         click_count: usize,
         area: GridArea,
     ) -> Self {
         Self {
             button,
             modifiers,
+            platform,
             click_count,
             area,
         }
@@ -1256,6 +1271,12 @@ impl ContextMenuGestureContext {
     /// The modifier keys held during the press.
     pub fn modifiers(&self) -> Modifiers {
         self.modifiers
+    }
+
+    /// The host whose conventions apply, as `App::platform_info`: a browser
+    /// on macOS is a macOS host, where Ctrl+click opens the menu.
+    pub fn platform_info(&self) -> PlatformInfo {
+        self.platform
     }
 
     /// The press's place in a click series: 1 for a single press, 2 for the
@@ -1287,9 +1308,10 @@ pub trait ContextMenuGesture: 'static {
     fn opens_menu(&self, context: &ContextMenuGestureContext) -> bool;
 }
 
-/// The platform conventions: a right click, and on macOS a Ctrl+click
-/// without Cmd, open the menu, on the body and on the header alike. On
-/// macOS Cmd+click toggles the selection, so Ctrl+click is free.
+/// The platform conventions: a right click, and on a macOS host (a browser
+/// there too) a Ctrl+click without Cmd, open the menu, on the body and on
+/// the header alike. On macOS Cmd+click toggles the selection, so
+/// Ctrl+click is free.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct StandardContextMenuGesture;
 
@@ -1297,7 +1319,7 @@ impl ContextMenuGesture for StandardContextMenuGesture {
     fn opens_menu(&self, context: &ContextMenuGestureContext) -> bool {
         let (button, modifiers) = (context.button(), context.modifiers());
         button == MouseButton::Right
-            || (cfg!(target_os = "macos")
+            || (context.platform_info().is_mac()
                 && button == MouseButton::Left
                 && modifiers.control
                 && !modifiers.platform)
@@ -1703,6 +1725,7 @@ pub struct RowDragPressContext<'a, R: GridRow> {
     column: R::Column,
     was_selected: bool,
     modifiers: Modifiers,
+    platform: PlatformInfo,
     mode: SelectionMode,
     click_count: usize,
 }
@@ -1713,6 +1736,7 @@ impl<'a, R: GridRow> RowDragPressContext<'a, R> {
         column: R::Column,
         was_selected: bool,
         modifiers: Modifiers,
+        platform: PlatformInfo,
         mode: SelectionMode,
         click_count: usize,
     ) -> Self {
@@ -1721,6 +1745,7 @@ impl<'a, R: GridRow> RowDragPressContext<'a, R> {
             column,
             was_selected,
             modifiers,
+            platform,
             mode,
             click_count,
         }
@@ -1748,6 +1773,12 @@ impl<'a, R: GridRow> RowDragPressContext<'a, R> {
         self.modifiers
     }
 
+    /// The host whose conventions apply, as `App::platform_info`: a browser
+    /// on macOS is a macOS host, so the secondary modifier is Cmd there.
+    pub fn platform_info(&self) -> PlatformInfo {
+        self.platform
+    }
+
     /// The grid's selection mode.
     pub fn mode(&self) -> SelectionMode {
         self.mode
@@ -1757,6 +1788,16 @@ impl<'a, R: GridRow> RowDragPressContext<'a, R> {
     /// click.
     pub fn click_count(&self) -> usize {
         self.click_count
+    }
+}
+
+/// Whether the secondary modifier is held: Cmd on a macOS host, Ctrl
+/// elsewhere, as `Modifiers::secondary` (which needs the `App`).
+fn is_secondary_held(modifiers: Modifiers, platform: PlatformInfo) -> bool {
+    if platform.is_mac() {
+        modifiers.platform
+    } else {
+        modifiers.control
     }
 }
 
@@ -1834,7 +1875,7 @@ impl<R: GridRow> RowDragGesture<R> for SelectedRowsDrag {
         press.was_selected()
             && press.click_count() == 1
             && !modifiers.shift
-            && !modifiers.secondary()
+            && !is_secondary_held(modifiers, press.platform_info())
             && matches!(press.line(), SelectableLine::Row { .. })
     }
 
@@ -2061,9 +2102,23 @@ impl<R: GridRow> RowDropPolicy<R> for DropBetweenRows {
 
 #[cfg(test)]
 mod tests {
-    use gpui_kit::px;
+    use gpui_kit::{OperatingSystem, PlatformTarget, px};
 
     use super::*;
+
+    const MAC: PlatformInfo = PlatformInfo {
+        os: OperatingSystem::Mac,
+        target: PlatformTarget::Native,
+    };
+    /// A browser on macOS follows the Mac conventions.
+    const MAC_BROWSER: PlatformInfo = PlatformInfo {
+        os: OperatingSystem::Mac,
+        target: PlatformTarget::Web,
+    };
+    const LINUX: PlatformInfo = PlatformInfo {
+        os: OperatingSystem::Linux,
+        target: PlatformTarget::Native,
+    };
 
     fn ix(i: u16) -> ColumnIx {
         ColumnIx::new(i)
@@ -2331,43 +2386,54 @@ mod tests {
     #[test]
     fn test_standard_selection_gesture() {
         use SelectionEdit::*;
-        let edit = |input, modifiers: Modifiers, extending, selected| {
-            StandardSelectionGesture.edit(&SelectionGestureContext::new(
-                input,
-                modifiers,
-                extending,
-                selected,
-                SelectionMode::RowSet,
-            ))
-        };
-        let secondary = Modifiers::secondary_key();
-        let shift_secondary = Modifiers {
-            shift: true,
-            ..secondary
-        };
-        // The standard gesture, case by case.
         let pointer = GestureInput::Pointer;
-        assert_eq!(edit(pointer, Modifiers::default(), false, false), Replace);
-        assert_eq!(edit(pointer, Modifiers::default(), false, true), Replace);
-        assert_eq!(edit(pointer, Modifiers::shift(), false, false), Extend);
-        assert_eq!(edit(pointer, secondary, false, true), Toggle);
-        assert_eq!(edit(pointer, shift_secondary, false, false), AddRange);
-        let context = GestureInput::ContextPointer;
-        assert_eq!(edit(context, Modifiers::default(), false, false), Replace);
-        assert_eq!(edit(context, Modifiers::default(), false, true), Keep);
         let keyboard = GestureInput::Keyboard;
-        assert_eq!(edit(keyboard, Modifiers::default(), false, true), Replace);
-        assert_eq!(edit(keyboard, Modifiers::default(), true, false), Extend);
+        // The secondary modifier is the host's: Cmd on macOS, in a browser
+        // there too, Ctrl elsewhere; the other one is a plain press.
+        for (platform, secondary, other) in [
+            (MAC, Modifiers::command(), Modifiers::control()),
+            (MAC_BROWSER, Modifiers::command(), Modifiers::control()),
+            (LINUX, Modifiers::control(), Modifiers::command()),
+        ] {
+            let edit = |input, modifiers: Modifiers, extending, selected| {
+                StandardSelectionGesture.edit(&SelectionGestureContext::new(
+                    input,
+                    modifiers,
+                    platform,
+                    extending,
+                    selected,
+                    SelectionMode::RowSet,
+                ))
+            };
+            let shift_secondary = Modifiers {
+                shift: true,
+                ..secondary
+            };
+            // The standard gesture, case by case.
+            assert_eq!(edit(pointer, Modifiers::default(), false, false), Replace);
+            assert_eq!(edit(pointer, Modifiers::default(), false, true), Replace);
+            assert_eq!(edit(pointer, Modifiers::shift(), false, false), Extend);
+            assert_eq!(edit(pointer, secondary, false, true), Toggle);
+            assert_eq!(edit(pointer, shift_secondary, false, false), AddRange);
+            assert_eq!(edit(pointer, other, false, true), Replace);
+            let context = GestureInput::ContextPointer;
+            assert_eq!(edit(context, Modifiers::default(), false, false), Replace);
+            assert_eq!(edit(context, Modifiers::default(), false, true), Keep);
+            assert_eq!(edit(keyboard, Modifiers::default(), false, true), Replace);
+            assert_eq!(edit(keyboard, Modifiers::default(), true, false), Extend);
+        }
 
         let context = SelectionGestureContext::new(
             keyboard,
             Modifiers::shift(),
+            LINUX,
             true,
             true,
             SelectionMode::CellSet,
         );
         assert_eq!(context.input(), keyboard);
         assert!(context.modifiers().shift);
+        assert_eq!(context.platform_info(), LINUX);
         assert!(context.is_extending());
         assert!(context.is_target_selected());
         assert_eq!(context.mode(), SelectionMode::CellSet);
@@ -2375,43 +2441,51 @@ mod tests {
 
     #[test]
     fn test_standard_context_menu_gesture() {
-        let opens = |button, modifiers, click_count, area| {
-            StandardContextMenuGesture.opens_menu(&ContextMenuGestureContext::new(
-                button,
-                modifiers,
-                click_count,
-                area,
-            ))
-        };
         let control = Modifiers::control();
         let control_command = Modifiers {
             platform: true,
             ..control
         };
-        let macos = cfg!(target_os = "macos");
-        for area in [GridArea::Body, GridArea::Header] {
-            // The right button, whatever the modifiers and the series.
-            for modifiers in [Modifiers::default(), Modifiers::shift(), control] {
-                assert!(opens(MouseButton::Right, modifiers, 1, area));
+        for (platform, macos) in [(MAC, true), (MAC_BROWSER, true), (LINUX, false)] {
+            let opens = |button, modifiers, click_count, area| {
+                StandardContextMenuGesture.opens_menu(&ContextMenuGestureContext::new(
+                    button,
+                    modifiers,
+                    platform,
+                    click_count,
+                    area,
+                ))
+            };
+            for area in [GridArea::Body, GridArea::Header] {
+                // The right button, whatever the modifiers and the series.
+                for modifiers in [Modifiers::default(), Modifiers::shift(), control] {
+                    assert!(opens(MouseButton::Right, modifiers, 1, area));
+                }
+                assert!(opens(MouseButton::Right, Modifiers::default(), 2, area));
+                // The left button: Ctrl without Cmd on a macOS host only. Cmd
+                // on macOS and Ctrl elsewhere toggle the selection.
+                assert!(!opens(MouseButton::Left, Modifiers::default(), 1, area));
+                assert!(!opens(MouseButton::Left, Modifiers::shift(), 1, area));
+                assert!(!opens(MouseButton::Left, Modifiers::command(), 1, area));
+                assert_eq!(opens(MouseButton::Left, control, 1, area), macos);
+                assert_eq!(opens(MouseButton::Left, control, 2, area), macos);
+                assert!(!opens(MouseButton::Left, control_command, 1, area));
+                // Other buttons never.
+                assert!(!opens(MouseButton::Middle, Modifiers::default(), 1, area));
+                assert!(!opens(MouseButton::Middle, control, 1, area));
             }
-            assert!(opens(MouseButton::Right, Modifiers::default(), 2, area));
-            // The left button: Ctrl without Cmd on macOS only. Cmd on macOS
-            // and Ctrl elsewhere toggle the selection.
-            assert!(!opens(MouseButton::Left, Modifiers::default(), 1, area));
-            assert!(!opens(MouseButton::Left, Modifiers::shift(), 1, area));
-            assert!(!opens(MouseButton::Left, Modifiers::command(), 1, area));
-            assert_eq!(opens(MouseButton::Left, control, 1, area), macos);
-            assert_eq!(opens(MouseButton::Left, control, 2, area), macos);
-            assert!(!opens(MouseButton::Left, control_command, 1, area));
-            // Other buttons never.
-            assert!(!opens(MouseButton::Middle, Modifiers::default(), 1, area));
-            assert!(!opens(MouseButton::Middle, control, 1, area));
         }
 
-        let context =
-            ContextMenuGestureContext::new(MouseButton::Middle, control, 2, GridArea::Header);
+        let context = ContextMenuGestureContext::new(
+            MouseButton::Middle,
+            control,
+            LINUX,
+            2,
+            GridArea::Header,
+        );
         assert_eq!(context.button(), MouseButton::Middle);
         assert!(context.modifiers().control);
+        assert_eq!(context.platform_info(), LINUX);
         assert_eq!(context.click_count(), 2);
         assert_eq!(context.area(), GridArea::Header);
     }

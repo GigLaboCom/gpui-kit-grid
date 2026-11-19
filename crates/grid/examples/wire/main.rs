@@ -67,9 +67,9 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     AnyElement, App, AppContext as _, Bounds, Context, Entity, Focusable as _, FontWeight,
-    InteractiveElement as _, IntoElement, KeyBinding, Keystroke, ParentElement as _, Pixels,
-    Render, SharedString, Styled as _, Subscription, Task, Window, WindowBounds, WindowOptions,
-    div, px, size,
+    InteractiveElement as _, IntoElement, KeyBinding, ParentElement as _, Pixels, Render,
+    SharedString, Styled as _, Subscription, Task, Window, WindowBounds, WindowOptions, div, px,
+    size,
 };
 use gpui_kit_grid::{GridStore, LiveGrid, LiveGridState};
 
@@ -96,7 +96,7 @@ use crate::{
     theme::WireTheme,
     trading::{
         bus::InstrumentBus,
-        instruments,
+        instruments, keys,
         market::{self, ChartFeed, Control, Feeds, Market},
         rows::QuoteColumn,
         theme::TradingTheme as _,
@@ -156,16 +156,16 @@ enum Command {
 impl Command {
     /// The binding of `keystrokes` to this command's action, in the
     /// wire's key context.
-    fn binding(self, keystrokes: &str) -> KeyBinding {
+    fn binding(self, keystrokes: &str, cx: &App) -> KeyBinding {
         let context = Some(KEY_CONTEXT);
         match self {
-            Self::FocusSearch => KeyBinding::new(keystrokes, FocusSearch, context),
-            Self::NextStory => KeyBinding::new(keystrokes, NextStory, context),
-            Self::PreviousStory => KeyBinding::new(keystrokes, PreviousStory, context),
-            Self::MarkAllRead => KeyBinding::new(keystrokes, MarkAllRead, context),
-            Self::Show(Section::News) => KeyBinding::new(keystrokes, ShowNews, context),
-            Self::Show(Section::Markets) => KeyBinding::new(keystrokes, ShowMarkets, context),
-            Self::Show(Section::Watchlist) => KeyBinding::new(keystrokes, ShowWatchlist, context),
+            Self::FocusSearch => keys::bind(keystrokes, FocusSearch, context, cx),
+            Self::NextStory => keys::bind(keystrokes, NextStory, context, cx),
+            Self::PreviousStory => keys::bind(keystrokes, PreviousStory, context, cx),
+            Self::MarkAllRead => keys::bind(keystrokes, MarkAllRead, context, cx),
+            Self::Show(Section::News) => keys::bind(keystrokes, ShowNews, context, cx),
+            Self::Show(Section::Markets) => keys::bind(keystrokes, ShowMarkets, context, cx),
+            Self::Show(Section::Watchlist) => keys::bind(keystrokes, ShowWatchlist, context, cx),
         }
     }
 
@@ -182,9 +182,9 @@ impl Command {
 }
 
 /// Every binding of `KEYS`.
-fn key_bindings() -> Vec<KeyBinding> {
+fn key_bindings(cx: &App) -> Vec<KeyBinding> {
     KEYS.iter()
-        .map(|(keystrokes, command)| command.binding(keystrokes))
+        .map(|(keystrokes, command)| command.binding(keystrokes, cx))
         .collect()
 }
 
@@ -692,8 +692,9 @@ impl Wire {
 
     fn render_status(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
+        let platform = cx.platform_info();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
-            let keystroke = Keystroke::parse(keystrokes).ok()?;
+            let keystroke = keys::keystroke(keystrokes, platform)?;
             Some(
                 h_flex()
                     .gap(px(6.))
@@ -826,17 +827,24 @@ fn setup(cx: &mut App) {
 fn configure(cx: &mut App) {
     trading::theme::install::<WireTheme>(cx);
     WireTheme::Navy.apply(cx);
-    cx.bind_keys(key_bindings());
+    cx.bind_keys(key_bindings(cx));
 }
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{Keystroke, OperatingSystem};
+
     use super::*;
 
     #[test]
     fn test_keys_parse_and_name_each_command_once() {
         for (ix, (keystrokes, command)) in KEYS.iter().enumerate() {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS[ix + 1..]
                     .iter()

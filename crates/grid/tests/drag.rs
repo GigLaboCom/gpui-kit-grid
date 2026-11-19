@@ -92,7 +92,7 @@ fn select_lines<D: LiveGridDelegate<Row = Item>>(
         let modifiers = if ix == 0 {
             Modifiers::default()
         } else {
-            Modifiers::secondary_key()
+            cx.update(|cx| Modifiers::secondary_key(cx))
         };
         fixture.click(cx, line(*each), modifiers);
     }

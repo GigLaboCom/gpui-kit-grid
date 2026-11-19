@@ -24,8 +24,8 @@ use gpui_kit::{
     AnyWindowHandle, App, AppContext as _, Bounds, Context, Div, ElementId, Entity, Focusable as _,
     FontWeight, Hsla, InputEvent as _, InteractiveElement as _, IntoElement, Modifiers,
     MouseButton, MouseMoveEvent, ParentElement as _, Pixels, Render, Role, ScrollDelta,
-    ScrollWheelEvent, Stateful, Styled as _, TestAppContext, TouchPhase, Window, WindowBounds,
-    WindowOptions, div, point, px, size, test::TestWindowExt as _,
+    ScrollEvent, ScrollSource, Stateful, Styled as _, TestAppContext, TouchPhase, Window,
+    WindowBounds, WindowOptions, div, point, px, size, test::TestWindowExt as _,
 };
 use gpui_kit_grid::{
     AfterCommit, CellChange, CellContent, CellEditor, CellStyle, CellStyleContext, CellTooltip,
@@ -541,11 +541,12 @@ fn test_wheel_line_is_one_row_at_every_size(cx: &mut TestAppContext) {
         let rows_top = row_height * 2.;
         cx.update_window(fixture.window, |_, window, cx| {
             for _ in 0..8 {
-                let wheel = ScrollWheelEvent {
+                let wheel = ScrollEvent {
                     position: point(px(50.), px(rows_top + row_height * 2.5)),
                     delta: ScrollDelta::Lines(point(0., -3.)),
                     modifiers: Modifiers::default(),
                     touch_phase: TouchPhase::Moved,
+                    source: ScrollSource::Pointer,
                 };
                 window.dispatch_event(wheel.to_platform_input(), cx);
             }
@@ -567,11 +568,12 @@ fn test_wheel_line_is_one_row_at_every_size(cx: &mut TestAppContext) {
         // Half a row of pixels (a trackpad): the first visible key is the
         // row cut by the band, and a press hits the row painted under it.
         cx.update_window(fixture.window, |_, window, cx| {
-            let wheel = ScrollWheelEvent {
+            let wheel = ScrollEvent {
                 position: point(px(50.), px(rows_top + row_height * 2.5)),
                 delta: ScrollDelta::Pixels(point(px(0.), px(-row_height / 2.))),
                 modifiers: Modifiers::default(),
                 touch_phase: TouchPhase::Moved,
+                source: ScrollSource::Pointer,
             };
             window.dispatch_event(wheel.to_platform_input(), cx);
         })
@@ -688,11 +690,12 @@ fn test_pinned_rows_stay_in_place(cx: &mut TestAppContext) {
     assert_eq!(fixture.visible_keys(cx), (22..30).collect::<Vec<_>>());
     assert_eq!(pinned_keys(&fixture, cx), (vec![5], vec![1000]));
     cx.update_window(fixture.window, |_, window, cx| {
-        let wheel = ScrollWheelEvent {
+        let wheel = ScrollEvent {
             position: point(px(50.), px(WINDOW_HEIGHT - ROW / 2.)),
             delta: ScrollDelta::Pixels(point(px(0.), px(ROW * 2.))),
             modifiers: Modifiers::default(),
             touch_phase: TouchPhase::Moved,
+            source: ScrollSource::Pointer,
         };
         window.dispatch_event(wheel.to_platform_input(), cx);
     })
@@ -1992,11 +1995,12 @@ fn test_cell_host_blocks_body_press(cx: &mut TestAppContext) {
 
     // The wheel over a host scrolls the rows.
     cx.update_window(fixture.window, |_, window, cx| {
-        let wheel = ScrollWheelEvent {
+        let wheel = ScrollEvent {
             position: order_cell(4, OrderColumn::Price),
             delta: ScrollDelta::Pixels(point(px(0.), px(-ROW * 2.))),
             modifiers: Modifiers::default(),
             touch_phase: TouchPhase::Moved,
+            source: ScrollSource::Pointer,
         };
         window.dispatch_event(wheel.to_platform_input(), cx);
     })

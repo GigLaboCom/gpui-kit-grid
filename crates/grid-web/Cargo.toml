@@ -29,8 +29,8 @@ homepage = "https://gkg.giglabo.com"
 async-channel = "2.3.1"
 # The simulator's random walk (`trading/market.rs`).
 fastrand = "2"
-# The same revision as the repository's workspace (`Cargo.toml`).
-gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "146ab45ac0d0cc9dad5f5fd05ecd38da9b3db6e7" }
+# The same release as the repository's workspace (`Cargo.toml`).
+gpui-kit = "0.10"
 gpui-kit-grid = { path = "../grid" }
 gpui-kit-grid-feed = { path = "../grid-feed" }
 gpui-kit-grid-web-shell = { path = "shell" }

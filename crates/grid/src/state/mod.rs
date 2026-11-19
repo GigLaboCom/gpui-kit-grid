@@ -69,7 +69,7 @@ use gpui_kit::base::{AutoScroll, Scrollbar, TestSupportExt as _};
 use gpui_kit::component::{ActiveTheme as _, Size as ComponentSize};
 use gpui_kit::{
     App, Bounds, Context, EventEmitter, FocusHandle, Focusable, InteractiveElement as _,
-    IntoElement, KeyContext, ParentElement as _, Pixels, Render, SharedString,
+    IntoElement, KeyContext, ParentElement as _, Pixels, PlatformInfo, Render, SharedString,
     StatefulInteractiveElement as _, Styled as _, Task, Window, div, prelude::FluentBuilder as _,
     px,
 };
@@ -336,6 +336,8 @@ pub struct LiveGridState<D: LiveGridDelegate> {
     fade: Option<(u32, Task<()>)>,
     stats: GridStats,
     focus_handle: FocusHandle,
+    // The host whose conventions the gestures follow (`App::platform_info`).
+    platform: PlatformInfo,
     // Copy: the exporters and the copy being written.
     copy: copy::CopySlot<D::Row>,
     // The column chooser.
@@ -469,6 +471,7 @@ impl<D: LiveGridDelegate> LiveGridState<D> {
             stats: GridStats::default(),
             // The grid is one Tab stop; Tab leaves it.
             focus_handle: cx.focus_handle().tab_stop(true),
+            platform: cx.platform_info(),
             copy: copy::CopySlot::default(),
             column_chooser: chooser::ChooserSlot::default(),
             group_panel: group_panel::GroupPanelState::default(),

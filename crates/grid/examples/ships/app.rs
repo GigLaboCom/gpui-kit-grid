@@ -24,7 +24,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     AnyElement, App, AppContext as _, Bounds, Context, Entity, FocusHandle, Focusable, FontWeight,
-    InteractiveElement as _, IntoElement, KeyBinding, Keystroke, MouseButton, MouseDownEvent,
+    InteractiveElement as _, IntoElement, KeyBinding, MouseButton, MouseDownEvent,
     ParentElement as _, Pixels, Render, SharedString, Styled as _, Subscription, Task, Window, div,
     prelude::FluentBuilder as _, px,
 };
@@ -64,7 +64,7 @@ use self::{
     table::{Grouping, ShipTable},
     ui::{GAP, NARROW, PAGE_PADDING, ROW_HEIGHT, SHORT},
 };
-use crate::trading::theme::TradingTheme as _;
+use crate::trading::{keys, theme::TradingTheme as _};
 
 gpui_kit::actions!(
     ships,
@@ -106,13 +106,13 @@ enum Command {
 }
 
 impl Command {
-    fn binding(self, keystrokes: &str) -> KeyBinding {
+    fn binding(self, keystrokes: &str, cx: &App) -> KeyBinding {
         let table = Some(TABLE_KEYS);
         match self {
-            Self::Grouping => KeyBinding::new(keystrokes, CycleGrouping, table),
-            Self::Moving => KeyBinding::new(keystrokes, ToggleMoving, table),
-            Self::Area => KeyBinding::new(keystrokes, CycleArea, table),
-            Self::FocusSearch => KeyBinding::new(keystrokes, FocusSearch, Some(KEY_CONTEXT)),
+            Self::Grouping => keys::bind(keystrokes, CycleGrouping, table, cx),
+            Self::Moving => keys::bind(keystrokes, ToggleMoving, table, cx),
+            Self::Area => keys::bind(keystrokes, CycleArea, table, cx),
+            Self::FocusSearch => keys::bind(keystrokes, FocusSearch, Some(KEY_CONTEXT), cx),
         }
     }
 
@@ -128,9 +128,9 @@ impl Command {
 }
 
 /// Every binding of `KEYS`.
-fn key_bindings() -> Vec<KeyBinding> {
+fn key_bindings(cx: &App) -> Vec<KeyBinding> {
     KEYS.iter()
-        .map(|(keystrokes, command)| command.binding(keystrokes))
+        .map(|(keystrokes, command)| command.binding(keystrokes, cx))
         .collect()
 }
 
@@ -197,7 +197,7 @@ pub fn setup(cx: &mut App) {
 pub fn configure(cx: &mut App) {
     crate::trading::theme::install::<ShipsTheme>(cx);
     ShipsTheme::Bridge.apply(cx);
-    cx.bind_keys(key_bindings());
+    cx.bind_keys(key_bindings(cx));
 }
 
 /// The ships view in `window`, the keyboard in its table, its driver
@@ -570,8 +570,9 @@ impl Ships {
             Clock::write(self.frame.clock_ms, &mut clock);
             clock.push_str(" UTC");
         }
+        let platform = cx.platform_info();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
-            let keystroke = Keystroke::parse(keystrokes).ok()?;
+            let keystroke = keys::keystroke(keystrokes, platform)?;
             Some(
                 h_flex()
                     .gap(px(5.))
@@ -1169,14 +1170,19 @@ impl Render for Ships {
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{Keystroke, OperatingSystem};
+
     use super::*;
 
     #[test]
     fn test_keys_parse_and_name_each_command_once() {
-        let bindings = key_bindings();
-        assert_eq!(bindings.len(), KEYS.len());
         for (ix, (keystrokes, command)) in KEYS.iter().enumerate() {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS[ix + 1..]
                     .iter()

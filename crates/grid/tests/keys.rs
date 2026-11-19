@@ -536,7 +536,8 @@ fn test_identity_follows_custom_keys(cx: &mut TestAppContext) {
     // A click and a Cmd/Ctrl+click select two rows and focus the second;
     // the events carry the keys.
     fixture.click(cx, 1, Modifiers::default());
-    fixture.click(cx, 2, Modifiers::secondary_key());
+    let secondary = cx.update(|cx| Modifiers::secondary_key(cx));
+    fixture.click(cx, 2, secondary);
     assert_eq!(
         fixture.take_events(),
         [

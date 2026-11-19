@@ -19,9 +19,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::{
     AnyElement, App, AppContext as _, Context, Entity, Focusable as _, FontWeight,
-    InteractiveElement as _, IntoElement, KeyBinding, Keystroke, ParentElement as _, Pixels,
-    Render, SharedString, Styled as _, Subscription, Task, Window, div,
-    prelude::FluentBuilder as _, px,
+    InteractiveElement as _, IntoElement, KeyBinding, ParentElement as _, Pixels, Render,
+    SharedString, Styled as _, Subscription, Task, Window, div, prelude::FluentBuilder as _, px,
 };
 use gpui_kit_grid::{GridStore, LiveGrid, LiveGridEvent, LiveGridState, SortDirection};
 // `std::time` natively; the browser's clock in wasm, where
@@ -52,6 +51,7 @@ use self::{
 use crate::trading::{
     bus::InstrumentBus,
     instruments::{self, InstrumentId},
+    keys,
     market::{self, ChartFeed, Control, Feeds},
     rows::{QuoteColumn, Side},
     theme::TradingTheme as _,
@@ -121,19 +121,19 @@ enum Command {
 impl Command {
     /// The binding of `keystrokes` to this command's action, in the
     /// broker's key context.
-    fn binding(self, keystrokes: &str) -> KeyBinding {
+    fn binding(self, keystrokes: &str, cx: &App) -> KeyBinding {
         let context = Some(KEY_CONTEXT);
         match self {
-            Self::FocusSearch => KeyBinding::new(keystrokes, FocusSearch, context),
-            Self::FocusWatchlist => KeyBinding::new(keystrokes, FocusWatchlist, context),
-            Self::Trade(Side::Buy) => KeyBinding::new(keystrokes, Buy, context),
-            Self::Trade(Side::Sell) => KeyBinding::new(keystrokes, Sell, context),
-            Self::Submit => KeyBinding::new(keystrokes, Submit, context),
-            Self::ToggleTheme => KeyBinding::new(keystrokes, ToggleTheme, context),
-            Self::TogglePriceColors => KeyBinding::new(keystrokes, TogglePriceColors, context),
-            Self::Show(BottomTab::Positions) => KeyBinding::new(keystrokes, ShowPositions, context),
-            Self::Show(BottomTab::Orders) => KeyBinding::new(keystrokes, ShowOrders, context),
-            Self::Show(BottomTab::Movers) => KeyBinding::new(keystrokes, ShowMovers, context),
+            Self::FocusSearch => keys::bind(keystrokes, FocusSearch, context, cx),
+            Self::FocusWatchlist => keys::bind(keystrokes, FocusWatchlist, context, cx),
+            Self::Trade(Side::Buy) => keys::bind(keystrokes, Buy, context, cx),
+            Self::Trade(Side::Sell) => keys::bind(keystrokes, Sell, context, cx),
+            Self::Submit => keys::bind(keystrokes, Submit, context, cx),
+            Self::ToggleTheme => keys::bind(keystrokes, ToggleTheme, context, cx),
+            Self::TogglePriceColors => keys::bind(keystrokes, TogglePriceColors, context, cx),
+            Self::Show(BottomTab::Positions) => keys::bind(keystrokes, ShowPositions, context, cx),
+            Self::Show(BottomTab::Orders) => keys::bind(keystrokes, ShowOrders, context, cx),
+            Self::Show(BottomTab::Movers) => keys::bind(keystrokes, ShowMovers, context, cx),
         }
     }
 
@@ -165,10 +165,10 @@ const BROWSER_OPTION_KEYS: [(&str, Command); 5] = [
 ];
 
 /// Every binding of `KEYS` and `BROWSER_OPTION_KEYS`.
-fn key_bindings() -> Vec<KeyBinding> {
+fn key_bindings(cx: &App) -> Vec<KeyBinding> {
     KEYS.iter()
         .chain(&BROWSER_OPTION_KEYS)
-        .map(|(keystrokes, command)| command.binding(keystrokes))
+        .map(|(keystrokes, command)| command.binding(keystrokes, cx))
         .collect()
 }
 
@@ -857,8 +857,9 @@ impl Broker {
 
     fn render_status(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let theme = cx.theme();
+        let platform = cx.platform_info();
         let hints = KEYS.iter().filter_map(|(keystrokes, command)| {
-            let keystroke = Keystroke::parse(keystrokes).ok()?;
+            let keystroke = keys::keystroke(keystrokes, platform)?;
             Some(
                 h_flex()
                     .gap(px(6.))
@@ -972,7 +973,7 @@ fn configure(cx: &mut App) {
     crate::trading::theme::install::<BrokerTheme>(cx);
     BrokerTheme::Light.apply(cx);
     PriceColors::GreenUp.install(cx);
-    cx.bind_keys(key_bindings());
+    cx.bind_keys(key_bindings(cx));
 }
 
 /// The broker in `window`: the simulator started, the keyboard in the
@@ -1058,12 +1059,19 @@ impl Broker {
 
 #[cfg(test)]
 mod tests {
+    use gpui_kit::{Keystroke, OperatingSystem};
+
     use super::*;
 
     #[test]
     fn test_browser_option_keys_parse_and_repeat_alt_keys() {
         for (keystrokes, command) in BROWSER_OPTION_KEYS {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS.iter()
                     .any(|(native, again)| *again == command && native.starts_with("alt-")),
@@ -1075,7 +1083,12 @@ mod tests {
     #[test]
     fn test_keys_parse_and_name_each_command_once() {
         for (ix, (keystrokes, command)) in KEYS.iter().enumerate() {
-            assert!(Keystroke::parse(keystrokes).is_ok(), "{keystrokes}");
+            for os in [OperatingSystem::Mac, OperatingSystem::Linux] {
+                assert!(
+                    Keystroke::parse_with_os(keystrokes, os).is_ok(),
+                    "{keystrokes}"
+                );
+            }
             assert!(
                 KEYS[ix + 1..]
                     .iter()
