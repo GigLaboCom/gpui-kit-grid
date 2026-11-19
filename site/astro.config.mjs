@@ -87,6 +87,8 @@ export default defineConfig({
         'embedding',
         // rustdoc, which the site's CI build writes into `api/`.
         { label: 'API', link: '/api/' },
+        // The released crates, and their API as docs.rs builds it.
+        { label: 'crates.io', link: 'https://crates.io/crates/gpui-kit-grid' },
         'roadmap',
         'sponsor',
       ],

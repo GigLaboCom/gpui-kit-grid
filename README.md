@@ -1,5 +1,7 @@
 # gpui-kit-grid
 
+[![crates.io](https://img.shields.io/crates/v/gpui-kit-grid)](https://crates.io/crates/gpui-kit-grid) [![docs.rs](https://docs.rs/gpui-kit-grid/badge.svg)](https://docs.rs/gpui-kit-grid)
+
 A live GPUI data grid, for applications built with [gpui-kit](https://gpui-kit.com): a real-time table of hundreds of thousands of rows that takes thousands of updates per second from any thread, with change highlight and with sorting, filtering, grouping and trees in the background.
 
 [![The quotes example: simulated stock quotes grouped by sector, each changed cell flashing green or red with an arrow, and live totals on the sector rows](https://raw.githubusercontent.com/GigLaboCom/gpui-kit-grid/main/.github/assets/quotes.gif)](https://gkg.giglabo.com/demo/quotes/)
@@ -8,9 +10,9 @@ The quotes example: every change highlighted as it arrives, live totals per sect
 
 It is a separate crate on top of gpui-kit. Rows are addressed by key and written from any thread; a background ingest collapses updates by key and publishes snapshots; the order on screen is rebuilt in the background; one custom element paints the visible cells. The ideas come from the LiveGrid grid (WinForms), rethought for GPUI.
 
-**Documentation: https://gkg.giglabo.com/** · [Getting started](https://gkg.giglabo.com/start/) · [Examples](https://gkg.giglabo.com/examples/) · [Live demos](https://gkg.giglabo.com/demo/) · [API](https://gkg.giglabo.com/api/)
+**Documentation: https://gkg.giglabo.com/** · [Getting started](https://gkg.giglabo.com/start/) · [Examples](https://gkg.giglabo.com/examples/) · [Live demos](https://gkg.giglabo.com/demo/) · [API](https://docs.rs/gpui-kit-grid) · [crates.io](https://crates.io/crates/gpui-kit-grid)
 
-> **Status:** stages 1–3 are done: the live core, grouping, aggregates and trees, then editing, elements in cells, export and drag and drop. The API will still change. What may come next is in [ROADMAP.md](https://gkg.giglabo.com/roadmap/).
+> **Status:** version 2 is on [crates.io](https://crates.io/crates/gpui-kit-grid). Stages 1–3 are done: the live core, grouping, aggregates and trees, then editing, elements in cells, export and drag and drop. The API will still change, in major versions: one for each gpui-kit minor release the grid moves to. What may come next is in [ROADMAP.md](https://gkg.giglabo.com/roadmap/).
 
 ## Why a new grid when gpui-kit has DataTable
 

@@ -212,8 +212,10 @@ them.
    the workspace's requirement on `gpui-kit-grid-macros` to `=X.Y.Z`, and
    ask for the new version in the install snippets (`"2"` for 2.x) and the
    compatibility table (`README.md`, `site/src/content/docs/start.md`,
-   `guides/columns.md`).
-2. Merge it, then tag that commit of `main` and push the tag:
+   `index.mdx`, `guides/columns.md`), and add it to the releases in
+   `ROADMAP.md`.
+2. Merge it, then tag that commit of `main` and push the tag; the Release
+   job publishes the crates on crates.io and opens the GitHub release:
 
    ```bash
    git tag -a v2.0.0 -m "gpui-kit-grid 2.0.0" origin/main
@@ -239,17 +241,18 @@ and the workflow `ci.yml`, with no environment, so no token is stored. It
 skips a version crates.io has, and from the second release on it checks
 the grid's API against its last version first (`cargo semver-checks`).
 
-crates.io takes a Trusted Publisher only for a crate it has, so the first
-version of each crate goes up by hand, from the commit the tag will name and
-before the tag, with a token of the `publish-new` scope (deleted after):
+crates.io takes a Trusted Publisher only for a crate it has, so 2.0.0, the
+first version of both crates, went up by hand (2026-11-19, from the commit
+`v2.0.0` names, before the tag). A crate that joins the published ones
+starts the same way: its first version by hand, from the commit the tag will
+name, with a token of the `publish-new` scope (deleted after), then its
+Trusted Publisher, then the tag:
 
 ```bash
-cargo publish -p gpui-kit-grid-macros -p gpui-kit-grid
+cargo publish -p <crate>
 ```
 
-Then set the Trusted Publisher on both crates and push the tag; the Release
-job finds both versions on crates.io and opens the GitHub release. A
-published version cannot be deleted, only yanked (`cargo yank`).
+A published version cannot be deleted, only yanked (`cargo yank`).
 
 ### The site
 

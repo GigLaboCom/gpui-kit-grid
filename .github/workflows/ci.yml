@@ -310,14 +310,15 @@ jobs:
               exit 1
             fi
           done
-          for page in README.md site/src/content/docs/start.md site/src/content/docs/guides/columns.md; do
+          for page in README.md site/src/content/docs/start.md site/src/content/docs/index.mdx \
+            site/src/content/docs/guides/columns.md; do
             if ! grep -qE "^gpui-kit-grid = (\"$requirement\"|\{ version = \"$requirement\")" "$page"; then
               echo "::error file=$page::the install snippet does not ask for gpui-kit-grid $requirement"
               exit 1
             fi
           done
           kit="$(sed -n 's/^gpui-kit = "\([^"]*\)"$/\1/p' Cargo.toml)"
-          for page in README.md site/src/content/docs/start.md; do
+          for page in README.md site/src/content/docs/start.md site/src/content/docs/index.mdx; do
             if ! grep -q "^gpui-kit = \"$kit\"$" "$page"; then
               echo "::error file=$page::the install snippet does not ask for gpui-kit $kit, as Cargo.toml does"
               exit 1

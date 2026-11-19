@@ -31,7 +31,15 @@ import ProductGrid from '../../components/ProductGrid.astro';
 
 ## Try it
 
-The quick start example, from a checkout of the repository: a window with 1000 trades that a producer thread keeps updating, sorted by price.
+Add the grid to a gpui-kit application from crates.io, with the gpui-kit release it is built against ([Getting started](/start/)):
+
+```toml frame="none"
+[dependencies]
+gpui-kit = "0.10"
+gpui-kit-grid = "2"
+```
+
+Or run the quick start example from a checkout of the repository: a window with 1000 trades that a producer thread keeps updating, sorted by price.
 
 ```sh frame="none" wrap
 cargo run --release -p gpui-kit-grid --example quickstart

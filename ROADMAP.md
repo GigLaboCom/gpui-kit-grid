@@ -10,6 +10,15 @@ Where gpui-kit-grid stands and what may come next.
 | 3. Input and output | Time, icon, image and custom cell values, elements in cells, editing under live updates, export to files, row drag and drop, column chooser, `LiveGridHandle`, `#[derive(GridColumns)]` | Done |
 | 4. Polish | See below | Not scheduled |
 
+## Releases
+
+| Version | Date | Where | gpui-kit | Rust |
+|---|---|---|---|---|
+| 2.0.0 | 2026-11-19 | [crates.io](https://crates.io/crates/gpui-kit-grid/2.0.0) | 0.10 | 1.98 |
+| 1.0.0 | 2026-11-13 | GitHub, tag `v1.0.0` | git revision `146ab45` | 1.95 |
+
+Each release's changes are in its [GitHub release](https://github.com/GigLaboCom/gpui-kit-grid/releases).
+
 ## Stage 3: input and output
 
 Done. The final benchmark run is on the documentation site's Performance page. There was no separate manual pass in real windows: VoiceOver, input methods, CSV files in spreadsheet applications and the two editing defaults below are covered by the headless tests and the Linux end-to-end suite only, so problems found in use are fixed as they are reported.
