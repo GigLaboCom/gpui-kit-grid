@@ -574,9 +574,7 @@ pub fn signed_money(value: f64) -> String {
 /// `value` with `decimals` decimals and thousands separated by commas.
 pub fn grouped(value: f64, decimals: usize) -> String {
     let text = format!("{:.*}", decimals, value.abs());
-    let (whole, fraction) = text
-        .split_once('.')
-        .map_or((text.as_str(), ""), |split| split);
+    let (whole, fraction) = text.split_once('.').unwrap_or((text.as_str(), ""));
     let mut out = String::with_capacity(text.len() + whole.len() / 3 + 1);
     if value < 0.
         && text

@@ -18,7 +18,7 @@ categories = ["gui", "wasm"]
 # The values of the repository's workspace (`Cargo.toml`), which these
 # packages are not members of.
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.98"
 publish = false
 license = "Apache-2.0"
 repository = "https://github.com/GigLaboCom/gpui-kit-grid"

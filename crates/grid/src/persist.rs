@@ -46,9 +46,9 @@ use crate::{
 ///
 /// let layout = GridLayout::new()
 ///     .with_view_id("trades")
-///     .with_column(LayoutColumn::new("id", 80.).with_zone(ColumnZone::FrozenLeft))
-///     .with_column(LayoutColumn::new("price", 100.))
-///     .with_column(LayoutColumn::new("fee", 90.).with_visible(false))
+///     .with_column(LayoutColumn::new("id", 80_f32).with_zone(ColumnZone::FrozenLeft))
+///     .with_column(LayoutColumn::new("price", 100_f32))
+///     .with_column(LayoutColumn::new("fee", 90_f32).with_visible(false))
 ///     .with_sort([LayoutSort::new("price", SortDirection::Descending)]);
 ///
 /// let codec = JsonLayoutCodec::default();
@@ -304,7 +304,8 @@ pub struct LayoutColumn {
 impl LayoutColumn {
     /// A visible, scrolling column. `width` is in logical pixels, so a
     /// layout saved on a Retina screen opens with the same widths on a 1×
-    /// screen; it accepts `f32` or GPUI `Pixels`.
+    /// screen; it accepts `f32` or GPUI `Pixels`. A literal names its type
+    /// (`80_f32` or `px(80.)`): Rust does not infer `f32` through `Into`.
     pub fn new(id: impl Into<ColumnId>, width: impl Into<f32>) -> Self {
         Self {
             id: id.into(),
@@ -1088,14 +1089,14 @@ mod tests {
     fn reference_layout() -> GridLayout {
         GridLayout::new()
             .with_view_id("trades")
-            .with_column(LayoutColumn::new("id", 80.).with_zone(ColumnZone::FrozenLeft))
-            .with_column(LayoutColumn::new("instrument", 140.))
-            .with_column(LayoutColumn::new("time", 92.5))
-            .with_column(LayoutColumn::new("fee", 90.).with_visible(false))
-            .with_column(LayoutColumn::new("price", 100.))
-            .with_column(LayoutColumn::new("side", 60.).with_zone(ColumnZone::FrozenRight))
+            .with_column(LayoutColumn::new("id", 80_f32).with_zone(ColumnZone::FrozenLeft))
+            .with_column(LayoutColumn::new("instrument", 140_f32))
+            .with_column(LayoutColumn::new("time", 92.5_f32))
+            .with_column(LayoutColumn::new("fee", 90_f32).with_visible(false))
+            .with_column(LayoutColumn::new("price", 100_f32))
+            .with_column(LayoutColumn::new("side", 60_f32).with_zone(ColumnZone::FrozenRight))
             .with_column(
-                LayoutColumn::new("venue", 72.)
+                LayoutColumn::new("venue", 72_f32)
                     .with_visible(false)
                     .with_zone(ColumnZone::FrozenRight),
             )
@@ -1112,7 +1113,7 @@ mod tests {
         assert_eq!(empty.view_id(), None);
         assert!(empty.columns().is_empty() && empty.sort().is_empty());
 
-        let column = LayoutColumn::new("price", 100.);
+        let column = LayoutColumn::new("price", 100_f32);
         assert_eq!(column.id().as_str(), "price");
         assert_eq!(column.width(), 100.);
         assert!(column.is_visible());
@@ -1121,13 +1122,13 @@ mod tests {
         let layout = GridLayout::new()
             .with_view_id("orders")
             .with_column(
-                LayoutColumn::new("price", 100.)
+                LayoutColumn::new("price", 100_f32)
                     .with_width(gpui_kit::px(120.))
                     .with_visible(false)
                     .with_zone(ColumnZone::FrozenRight),
             )
-            .with_column(LayoutColumn::new(String::from("qty"), 60.))
-            .with_column(LayoutColumn::new("price", 30.))
+            .with_column(LayoutColumn::new(String::from("qty"), 60_f32))
+            .with_column(LayoutColumn::new("price", 30_f32))
             .with_sort([LayoutSort::new("qty", SortDirection::Ascending)])
             .with_sort([LayoutSort::new("price", SortDirection::Descending)]);
         assert_eq!(layout.view_id(), Some("orders"));
@@ -1273,9 +1274,9 @@ mod tests {
             expansion.with_toggled([OwnedValue::Decimal(rust_decimal::Decimal::new(1020, 2))]);
         GridLayout::new()
             .with_view_id("trades")
-            .with_column(LayoutColumn::new("instrument", 140.))
-            .with_column(LayoutColumn::new("side", 60.))
-            .with_column(LayoutColumn::new("price", 100.))
+            .with_column(LayoutColumn::new("instrument", 140_f32))
+            .with_column(LayoutColumn::new("side", 60_f32))
+            .with_column(LayoutColumn::new("price", 100_f32))
             .with_sort([LayoutSort::new("price", SortDirection::Descending)])
             .with_group_by([
                 LayoutGroup::new("instrument", SortDirection::Ascending),
@@ -1349,9 +1350,9 @@ mod tests {
         );
 
         let schema = [
-            LayoutColumn::new("instrument", 100.),
-            LayoutColumn::new("side", 100.),
-            LayoutColumn::new("price", 100.),
+            LayoutColumn::new("instrument", 100_f32),
+            LayoutColumn::new("side", 100_f32),
+            LayoutColumn::new("price", 100_f32),
         ];
         let context = LayoutMergeContext::new(&schema);
         let report = LayoutReport::resolve(&context, &read);
@@ -1471,7 +1472,7 @@ mod tests {
     #[test]
     fn test_layout_report_groups() {
         // Five schema columns; `e` cannot be grouped.
-        let schema = ["a", "b", "c", "d", "e"].map(|id| LayoutColumn::new(id, 50.));
+        let schema = ["a", "b", "c", "d", "e"].map(|id| LayoutColumn::new(id, 50_f32));
         let ungroupable = [ColumnId::from("e")];
         let context = LayoutMergeContext::new(&schema).with_ungroupable(&ungroupable);
         assert!(context.is_groupable("a") && context.contains("e"));
@@ -1759,7 +1760,7 @@ mod tests {
         }
         let layout = names
             .iter()
-            .map(|name| LayoutColumn::new(name.clone(), 96.5))
+            .map(|name| LayoutColumn::new(name.clone(), 96.5_f32))
             .fold(
                 GridLayout::new().with_view_id("trades"),
                 GridLayout::with_column,
@@ -1845,28 +1846,28 @@ mod tests {
     fn test_append_new_columns() {
         // Schema order with defaults; `fee`, `flag` and `note` are new.
         let schema = [
-            LayoutColumn::new("id", 80.).with_zone(ColumnZone::FrozenLeft),
-            LayoutColumn::new("name", 120.),
-            LayoutColumn::new("fee", 60.),
-            LayoutColumn::new("price", 90.),
-            LayoutColumn::new("flag", 40.).with_zone(ColumnZone::FrozenLeft),
-            LayoutColumn::new("qty", 70.).with_visible(false),
-            LayoutColumn::new("note", 200.).with_visible(false),
-            LayoutColumn::new("side", 50.).with_zone(ColumnZone::FrozenRight),
+            LayoutColumn::new("id", 80_f32).with_zone(ColumnZone::FrozenLeft),
+            LayoutColumn::new("name", 120_f32),
+            LayoutColumn::new("fee", 60_f32),
+            LayoutColumn::new("price", 90_f32),
+            LayoutColumn::new("flag", 40_f32).with_zone(ColumnZone::FrozenLeft),
+            LayoutColumn::new("qty", 70_f32).with_visible(false),
+            LayoutColumn::new("note", 200_f32).with_visible(false),
+            LayoutColumn::new("side", 50_f32).with_zone(ColumnZone::FrozenRight),
         ];
         let context = LayoutMergeContext::new(&schema);
         assert!(context.contains("fee") && !context.contains("gone"));
         assert_eq!(context.column("qty"), Some(&schema[5]));
 
         let saved = GridLayout::new()
-            .with_column(LayoutColumn::new("price", 101.))
-            .with_column(LayoutColumn::new("gone", 55.))
-            .with_column(LayoutColumn::new("name", 133.).with_visible(false))
-            .with_column(LayoutColumn::new("price", 999.).with_zone(ColumnZone::FrozenLeft))
-            .with_column(LayoutColumn::new("qty", 71.).with_zone(ColumnZone::FrozenRight))
-            .with_column(LayoutColumn::new("id", 81.).with_zone(ColumnZone::FrozenLeft))
-            .with_column(LayoutColumn::new("side", 51.).with_zone(ColumnZone::FrozenRight))
-            .with_column(LayoutColumn::new("gone", 56.))
+            .with_column(LayoutColumn::new("price", 101_f32))
+            .with_column(LayoutColumn::new("gone", 55_f32))
+            .with_column(LayoutColumn::new("name", 133_f32).with_visible(false))
+            .with_column(LayoutColumn::new("price", 999_f32).with_zone(ColumnZone::FrozenLeft))
+            .with_column(LayoutColumn::new("qty", 71_f32).with_zone(ColumnZone::FrozenRight))
+            .with_column(LayoutColumn::new("id", 81_f32).with_zone(ColumnZone::FrozenLeft))
+            .with_column(LayoutColumn::new("side", 51_f32).with_zone(ColumnZone::FrozenRight))
+            .with_column(LayoutColumn::new("gone", 56_f32))
             .with_sort([
                 LayoutSort::new("gone", SortDirection::Descending),
                 LayoutSort::new("price", SortDirection::Ascending),
@@ -1880,14 +1881,14 @@ mod tests {
         // schema defaults.
         let merged = AppendNewColumns.merge(&context, &saved);
         let expected = [
-            LayoutColumn::new("id", 81.).with_zone(ColumnZone::FrozenLeft),
-            LayoutColumn::new("flag", 40.).with_zone(ColumnZone::FrozenLeft),
-            LayoutColumn::new("price", 101.),
-            LayoutColumn::new("name", 133.).with_visible(false),
-            LayoutColumn::new("fee", 60.),
-            LayoutColumn::new("note", 200.).with_visible(false),
-            LayoutColumn::new("qty", 71.).with_zone(ColumnZone::FrozenRight),
-            LayoutColumn::new("side", 51.).with_zone(ColumnZone::FrozenRight),
+            LayoutColumn::new("id", 81_f32).with_zone(ColumnZone::FrozenLeft),
+            LayoutColumn::new("flag", 40_f32).with_zone(ColumnZone::FrozenLeft),
+            LayoutColumn::new("price", 101_f32),
+            LayoutColumn::new("name", 133_f32).with_visible(false),
+            LayoutColumn::new("fee", 60_f32),
+            LayoutColumn::new("note", 200_f32).with_visible(false),
+            LayoutColumn::new("qty", 71_f32).with_zone(ColumnZone::FrozenRight),
+            LayoutColumn::new("side", 51_f32).with_zone(ColumnZone::FrozenRight),
         ];
         assert_eq!(merged, expected);
 
