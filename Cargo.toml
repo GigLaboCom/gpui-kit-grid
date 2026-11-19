@@ -33,7 +33,7 @@ gpui-kit-grid = { path = "crates/grid" }
 gpui-kit-grid-feed = { path = "crates/grid-feed" }
 # Exact: the grid and its derive ship together, on one version (as serde and
 # serde_derive).
-gpui-kit-grid-macros = { path = "crates/grid-macros", version = "=1.0.0" }
+gpui-kit-grid-macros = { path = "crates/grid-macros", version = "=2.0.0" }
 # The examples' "More from GigLabo" button and dialog.
 giglabo-products = { path = "crates/products" }
 
