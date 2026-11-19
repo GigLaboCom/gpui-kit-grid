@@ -31,6 +31,8 @@ It is a separate crate on top of gpui-kit. Rows are addressed by key and written
 
 Measured with the headless `spike_bench` example (release, macOS); the [Performance](https://gkg.giglabo.com/performance/) page has every scenario.
 
+[Rust data grids compared](https://gkg.giglabo.com/rust-data-grid/) sets the grid beside the other GPUI tables and those of egui, iced, Slint, GTK and Dioxus.
+
 ## Install
 
 ```toml

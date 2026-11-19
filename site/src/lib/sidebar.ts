@@ -36,6 +36,8 @@ export const SIDEBAR = [
   // Pages about one demo each, by what a reader may be looking for.
   { label: 'Live demos', items: ['webgpu-demo', 'trade-blotter'] },
   'performance',
+  // The other Rust data grids, for a reader choosing one.
+  'rust-data-grid',
   { slug: 'web', label: 'Web' },
   'play',
   'embedding',
