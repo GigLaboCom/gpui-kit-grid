@@ -81,3 +81,35 @@ describe.skipIf(!existsSync(DIST))('llms.txt in dist/', () => {
     expect(broken).toEqual([]);
   });
 });
+
+// Every page but the 404 points its `og:image` at its own card
+// (src/pages/og/[...slug].png.ts), and the card is a 1200 × 630 PNG.
+describe.skipIf(!existsSync(DIST))('Open Graph cards in dist/', () => {
+  const OWN_PAGES_OUTSIDE = new Set([RUSTDOC, 'demo', 'embed', 'og']);
+  const own = existsSync(DIST)
+    ? pages(DIST).filter((page) => !OWN_PAGES_OUTSIDE.has(relative(DIST, page).split(/[\\/]/)[0]))
+    : [];
+
+  test('every page has its card', () => {
+    const wrong: string[] = [];
+    for (const page of own) {
+      const here = '/' + relative(DIST, page).split('\\').join('/');
+      const card = readFileSync(page, 'utf8').match(/<meta property="og:image" content="([^"]*)"/)?.[1];
+      if (here === '/404.html') {
+        if (card) wrong.push(`${here}: ${card}`);
+        continue;
+      }
+      const file = card && join(DIST, new URL(card).pathname);
+      if (!file || !existsSync(file)) {
+        wrong.push(`${here}: ${card ?? 'no og:image'}`);
+        continue;
+      }
+      // A PNG's width and height are the first fields of its IHDR chunk.
+      const png = readFileSync(file);
+      const [width, height] = [png.readUInt32BE(16), png.readUInt32BE(20)];
+      if (width !== 1200 || height !== 630) wrong.push(`${here}: ${width}x${height}`);
+    }
+    expect(own.length).toBeGreaterThan(10);
+    expect(wrong).toEqual([]);
+  });
+});

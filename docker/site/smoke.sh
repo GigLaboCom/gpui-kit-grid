@@ -73,6 +73,9 @@ expect "/ status" "$(status /)" 200
 expect "/ type" "$(header / Content-Type)" "text/html*"
 # The map for language models (site/src/pages/llms.txt.ts): UTF-8 text.
 expect "/llms.txt type" "$(header /llms.txt Content-Type)" "text/plain; charset=utf-8"
+expect "/robots.txt type" "$(header /robots.txt Content-Type)" "text/plain; charset=utf-8"
+# A page's Open Graph card (site/src/pages/og/).
+expect "/og/index.png type" "$(header /og/index.png Content-Type)" "image/png"
 
 # A directory page without its slash: a relative redirect to it.
 page="$(cd "$dist" && find . -mindepth 2 -maxdepth 2 -name index.html | sort | head -1 | sed 's|^\./||; s|/index\.html$||')"

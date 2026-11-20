@@ -1,6 +1,7 @@
 ---
 title: Performance
 description: Frame, rebuild, ingest and memory figures from the headless benchmark, and how to reproduce them.
+poster: ops
 ---
 
 The headless `spike_bench` example measures frames, background rebuilds, ingest and memory under scripted loads, up to 100k rows × 40 columns at 10k updates per second, and runs the same load through gpui-kit's `DataTable` for comparison. Each scenario has a limit of its own, and a run passes when every one holds.
