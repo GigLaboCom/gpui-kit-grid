@@ -11,6 +11,10 @@ export const collections = {
         // An outline of a page still to be written: `src/routeData.ts` marks
         // it and keeps it out of search and search engines.
         stub: z.boolean().default(false),
+        // The example's poster (`public/posters/<name>.webp`) along the
+        // bottom of the page's Open Graph card (src/lib/og.ts); quotes when
+        // the page names none.
+        poster: z.string().optional(),
       }),
     }),
   }),

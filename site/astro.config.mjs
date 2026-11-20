@@ -41,21 +41,6 @@ export default defineConfig({
         // Google Consent Mode v2 defaults (all denied) and the GTM container,
         // only on gkg.giglabo.com: src/lib/consent.ts; the banner is in Footer.
         { tag: 'script', content: consentHead() },
-        // A shared link shows the quotes poster under the crate's name, as
-        // the repository's social preview does. A page with a picture of its
-        // own sets `og:image` in its frontmatter, which wins.
-        {
-          tag: 'meta',
-          attrs: { property: 'og:image', content: new URL(`${base.replace(/\/$/, '')}/social-preview.png`, site).href },
-        },
-        {
-          tag: 'meta',
-          attrs: {
-            property: 'og:image:alt',
-            content:
-              'gpui-kit-grid, a live data grid for Rust applications built with GPUI, over simulated quotes grouped by sector with changed cells in green and red',
-          },
-        },
       ],
       social: [{ icon: 'github', label: 'Repository', href: 'https://github.com/GigLaboCom/gpui-kit-grid' }],
       customCss: [
