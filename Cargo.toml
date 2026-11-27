@@ -28,7 +28,7 @@ readme = "README.md"
 # new GPUI snapshot, and `Cargo.lock` holds the exact release. To build
 # against a local gpui-kit checkout instead, see CONTRIBUTING.md, "A local
 # gpui-kit checkout".
-gpui-kit = "0.10"
+gpui-kit = "0.11"
 gpui-kit-grid = { path = "crates/grid" }
 gpui-kit-grid-feed = { path = "crates/grid-feed" }
 # Exact: the grid and its derive ship together, on one version (as serde and
